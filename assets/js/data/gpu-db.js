@@ -43,7 +43,13 @@
       sources: [
         'https://www.techpowerup.com/gpu-specs/',
         'https://en.wikipedia.org/wiki/List_of_AMD_graphics_processing_units',
-        'https://en.wikipedia.org/wiki/List_of_Nvidia_graphics_processing_units'
+        'https://en.wikipedia.org/wiki/List_of_Nvidia_graphics_processing_units',
+        'https://en.wikipedia.org/wiki/GeForce_RTX_50_series',
+        'https://en.wikipedia.org/wiki/Radeon_RX_9000_series',
+        'https://en.wikipedia.org/wiki/Apple_silicon',
+        'https://en.wikipedia.org/wiki/Apple_M3',
+        'https://en.wikipedia.org/wiki/Apple_M4',
+        'https://en.wikipedia.org/wiki/Apple_M5'
       ]
     },
 
@@ -67,7 +73,7 @@
         ],
         specs: {
           fp32Tflops: 104.8, fp16Tflops: 104.8, int8Tops: null,
-          bandwidthGBs: 1792, pixelRateGps: 392.2, texelRateGts: 1568.8,
+          bandwidthGBs: 1792, pixelRateGps: 423.6, texelRateGts: 1636.8,
           triangleRateGts: null, vramGB: 32, memType: 'GDDR7', busWidth: 512,
           shaderUnits: 21760, baseClockMhz: 2017, boostClockMhz: 2407
         },
@@ -87,7 +93,7 @@
         ],
         specs: {
           fp32Tflops: 56.28, fp16Tflops: 56.28, int8Tops: null,
-          bandwidthGBs: 960, pixelRateGps: 336.6, texelRateGts: 1009.7,
+          bandwidthGBs: 960, pixelRateGps: 293.1, texelRateGts: 879.3,
           triangleRateGts: null, vramGB: 16, memType: 'GDDR7', busWidth: 256,
           shaderUnits: 10752, baseClockMhz: 2295, boostClockMhz: 2617
         },
@@ -107,7 +113,7 @@
         ],
         specs: {
           fp32Tflops: 44.05, fp16Tflops: 44.05, int8Tops: null,
-          bandwidthGBs: 896, pixelRateGps: 313.9, texelRateGts: 878.9,
+          bandwidthGBs: 896, pixelRateGps: 235.4, texelRateGts: 686.6,
           triangleRateGts: null, vramGB: 16, memType: 'GDDR7', busWidth: 256,
           shaderUnits: 8960, baseClockMhz: 2295, boostClockMhz: 2452
         },
@@ -127,7 +133,7 @@
         ],
         specs: {
           fp32Tflops: 30.84, fp16Tflops: 30.84, int8Tops: null,
-          bandwidthGBs: 672, pixelRateGps: 200.9, texelRateGts: 642.9,
+          bandwidthGBs: 672, pixelRateGps: 200.9, texelRateGts: 482.3,
           triangleRateGts: null, vramGB: 12, memType: 'GDDR7', busWidth: 192,
           shaderUnits: 6144, baseClockMhz: 2160, boostClockMhz: 2512
         },
@@ -167,7 +173,7 @@
         ],
         specs: {
           fp32Tflops: 19.18, fp16Tflops: 19.18, int8Tops: null,
-          bandwidthGBs: 448, pixelRateGps: 119.9, texelRateGts: 359.6,
+          bandwidthGBs: 448, pixelRateGps: 119.9, texelRateGts: 299.6,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR7', busWidth: 128,
           shaderUnits: 3840, baseClockMhz: 2280, boostClockMhz: 2497
         },
@@ -267,7 +273,7 @@
         ],
         specs: {
           fp32Tflops: 22.06, fp16Tflops: 22.06, int8Tops: null,
-          bandwidthGBs: 288, pixelRateGps: 121.4, texelRateGts: 364.1,
+          bandwidthGBs: 288, pixelRateGps: 121.4, texelRateGts: 344.8,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 128,
           shaderUnits: 4352, baseClockMhz: 2310, boostClockMhz: 2535
         },
@@ -287,7 +293,7 @@
         ],
         specs: {
           fp32Tflops: 15.11, fp16Tflops: 15.11, int8Tops: null,
-          bandwidthGBs: 272, pixelRateGps: 94.4, texelRateGts: 236.2,
+          bandwidthGBs: 272, pixelRateGps: 118.1, texelRateGts: 236.2,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 128,
           shaderUnits: 3072, baseClockMhz: 1830, boostClockMhz: 2460
         },
@@ -407,7 +413,7 @@
         ],
         specs: {
           fp32Tflops: 9.09, fp16Tflops: 9.09, int8Tops: null,
-          bandwidthGBs: 224, pixelRateGps: 49.7, texelRateGts: 142,
+          bandwidthGBs: 224, pixelRateGps: 56.9, texelRateGts: 142,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 128,
           shaderUnits: 2560, baseClockMhz: 1552, boostClockMhz: 1777
         },
@@ -502,7 +508,7 @@
         ],
         specs: {
           fp32Tflops: 6.46, fp16Tflops: 6.46, int8Tops: null,
-          bandwidthGBs: 256.3, pixelRateGps: 96.4, texelRateGts: 180.7,
+          bandwidthGBs: 256.3, pixelRateGps: 107.7, texelRateGts: 202,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR5', busWidth: 256,
           shaderUnits: 1920, baseClockMhz: 1506, boostClockMhz: 1683
         },
@@ -559,7 +565,7 @@
         ],
         specs: {
           fp32Tflops: 1.127, fp16Tflops: 1.127, int8Tops: null,
-          bandwidthGBs: 48, pixelRateGps: 22.0, texelRateGts: 35.2,
+          bandwidthGBs: 48, pixelRateGps: 23.5, texelRateGts: 35.2,
           triangleRateGts: null, vramGB: 2, memType: 'GDDR5', busWidth: 64,
           shaderUnits: 384, baseClockMhz: 1228, boostClockMhz: 1468
         },
@@ -583,7 +589,7 @@
         ],
         specs: {
           fp32Tflops: 39.70, fp16Tflops: 39.70, int8Tops: null,
-          bandwidthGBs: 576, pixelRateGps: 161.1, texelRateGts: 419.1,
+          bandwidthGBs: 576, pixelRateGps: 228.5, texelRateGts: 620.2,
           triangleRateGts: null, vramGB: 16, memType: 'GDDR6', busWidth: 256,
           shaderUnits: 9728, baseClockMhz: null, boostClockMhz: 2040
         },
@@ -603,7 +609,7 @@
         ],
         specs: {
           fp32Tflops: 33.66, fp16Tflops: 33.66, int8Tops: null,
-          bandwidthGBs: 432, pixelRateGps: 130.3, texelRateGts: 326.4,
+          bandwidthGBs: 432, pixelRateGps: 182.4, texelRateGts: 528.9,
           triangleRateGts: null, vramGB: 12, memType: 'GDDR6', busWidth: 192,
           shaderUnits: 7424, baseClockMhz: null, boostClockMhz: 2280
         },
@@ -623,7 +629,7 @@
         ],
         specs: {
           fp32Tflops: 23.04, fp16Tflops: 23.04, int8Tops: null,
-          bandwidthGBs: 256, pixelRateGps: 92.2, texelRateGts: 230.4,
+          bandwidthGBs: 256, pixelRateGps: 104.4, texelRateGts: 313.2,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 128,
           shaderUnits: 4608, baseClockMhz: null, boostClockMhz: 2175
         },
@@ -643,7 +649,7 @@
         ],
         specs: {
           fp32Tflops: 15.11, fp16Tflops: 15.11, int8Tops: null,
-          bandwidthGBs: 256, pixelRateGps: 75.8, texelRateGts: 227.5,
+          bandwidthGBs: 256, pixelRateGps: 113.8, texelRateGts: 227.5,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 128,
           shaderUnits: 3072, baseClockMhz: null, boostClockMhz: 2370
         },
@@ -663,7 +669,7 @@
         ],
         specs: {
           fp32Tflops: 18.98, fp16Tflops: 18.98, int8Tops: null,
-          bandwidthGBs: 448, pixelRateGps: 130.3, texelRateGts: 260.6,
+          bandwidthGBs: 448, pixelRateGps: 164.2, texelRateGts: 328.3,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 256,
           shaderUnits: 6144, baseClockMhz: null, boostClockMhz: 1545
         },
@@ -683,7 +689,7 @@
         ],
         specs: {
           fp32Tflops: 15.97, fp16Tflops: 15.97, int8Tops: null,
-          bandwidthGBs: 448, pixelRateGps: 124.8, texelRateGts: 249.6,
+          bandwidthGBs: 448, pixelRateGps: 155.5, texelRateGts: 259.2,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 256,
           shaderUnits: 5120, baseClockMhz: null, boostClockMhz: 1560
         },
@@ -703,7 +709,7 @@
         ],
         specs: {
           fp32Tflops: 13.31, fp16Tflops: 13.31, int8Tops: null,
-          bandwidthGBs: 336, pixelRateGps: 86.4, texelRateGts: 172.8,
+          bandwidthGBs: 336, pixelRateGps: 81.7, texelRateGts: 204.2,
           triangleRateGts: null, vramGB: 6, memType: 'GDDR6', busWidth: 192,
           shaderUnits: 3840, baseClockMhz: null, boostClockMhz: 1732
         },
@@ -723,7 +729,7 @@
         ],
         specs: {
           fp32Tflops: 7.12, fp16Tflops: 7.12, int8Tops: null,
-          bandwidthGBs: 192, pixelRateGps: 58.3, texelRateGts: 116.6,
+          bandwidthGBs: 192, pixelRateGps: 55.7, texelRateGts: 111.4,
           triangleRateGts: null, vramGB: 4, memType: 'GDDR6', busWidth: 128,
           shaderUnits: 2048, baseClockMhz: null, boostClockMhz: 1740
         },
@@ -743,7 +749,7 @@
         ],
         specs: {
           fp32Tflops: 2.98, fp16Tflops: 2.98, int8Tops: null,
-          bandwidthGBs: 128, pixelRateGps: 53.3, texelRateGts: 93.2,
+          bandwidthGBs: 128, pixelRateGps: 49.9, texelRateGts: 99.8,
           triangleRateGts: null, vramGB: 4, memType: 'GDDR5', busWidth: 128,
           shaderUnits: 896, baseClockMhz: null, boostClockMhz: 1665
         },
@@ -763,7 +769,7 @@
         ],
         specs: {
           fp32Tflops: 3.04, fp16Tflops: 3.04, int8Tops: null,
-          bandwidthGBs: 80, pixelRateGps: 25.0, texelRateGts: 50.1,
+          bandwidthGBs: 80, pixelRateGps: 50.4, texelRateGts: 50.1,
           triangleRateGts: null, vramGB: 2, memType: 'GDDR6', busWidth: 64,
           shaderUnits: 896, baseClockMhz: null, boostClockMhz: 1695
         },
@@ -825,7 +831,7 @@
         ],
         specs: {
           fp32Tflops: 51.48, fp16Tflops: 51.48, int8Tops: null,
-          bandwidthGBs: 800, pixelRateGps: 381.6, texelRateGts: 763.2,
+          bandwidthGBs: 800, pixelRateGps: 460.8, texelRateGts: 806.4,
           triangleRateGts: null, vramGB: 20, memType: 'GDDR6', busWidth: 320,
           shaderUnits: 5376, baseClockMhz: 2000, boostClockMhz: 2394
         },
@@ -863,7 +869,7 @@
         ],
         specs: {
           fp32Tflops: 35.17, fp16Tflops: 35.17, int8Tops: null,
-          bandwidthGBs: 432, pixelRateGps: 220.3, texelRateGts: 550.8,
+          bandwidthGBs: 432, pixelRateGps: 244.2, texelRateGts: 550.8,
           triangleRateGts: null, vramGB: 12, memType: 'GDDR6', busWidth: 192,
           shaderUnits: 3456, baseClockMhz: 1700, boostClockMhz: 2544
         },
@@ -977,7 +983,7 @@
         ],
         specs: {
           fp32Tflops: 8.93, fp16Tflops: 8.93, int8Tops: null,
-          bandwidthGBs: 224, pixelRateGps: 99.8, texelRateGts: 279.3,
+          bandwidthGBs: 224, pixelRateGps: 159.4, texelRateGts: 279.3,
           triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 128,
           shaderUnits: 1792, baseClockMhz: 1626, boostClockMhz: 2491
         },
@@ -1056,8 +1062,8 @@
           'gfx1150', 'Strix Point', 'AMD Ryzen AI 9 HX 370'
         ],
         specs: {
-          fp32Tflops: 5.94, fp16Tflops: 5.94, int8Tops: null,
-          bandwidthGBs: 128, pixelRateGps: 46.4, texelRateGts: 92.8,
+          fp32Tflops: 11.88, fp16Tflops: 11.88, int8Tops: null,
+          bandwidthGBs: 128, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128,
           shaderUnits: 1024, baseClockMhz: null, boostClockMhz: 2900
         },
@@ -1075,8 +1081,8 @@
           'gfx1150', 'Strix Point'
         ],
         specs: {
-          fp32Tflops: 4.45, fp16Tflops: 4.45, int8Tops: null,
-          bandwidthGBs: 120, pixelRateGps: 34.8, texelRateGts: 69.6,
+          fp32Tflops: 8.91, fp16Tflops: 8.91, int8Tops: null,
+          bandwidthGBs: 120, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128,
           shaderUnits: 768, baseClockMhz: null, boostClockMhz: 2900
         },
@@ -1094,8 +1100,8 @@
           'gfx1103', 'Phoenix', 'AMD Ryzen 7 7840U'
         ],
         specs: {
-          fp32Tflops: 4.15, fp16Tflops: 4.15, int8Tops: null,
-          bandwidthGBs: 89.6, pixelRateGps: 25, texelRateGts: 50,
+          fp32Tflops: 8.29, fp16Tflops: 8.29, int8Tops: null,
+          bandwidthGBs: 89.6, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 128,
           shaderUnits: 768, baseClockMhz: null, boostClockMhz: 2700
         },
@@ -1113,8 +1119,8 @@
           'gfx1103', 'Phoenix'
         ],
         specs: {
-          fp32Tflops: 3.69, fp16Tflops: 3.69, int8Tops: null,
-          bandwidthGBs: 89.6, pixelRateGps: 22.6, texelRateGts: 45.1,
+          fp32Tflops: 5.32, fp16Tflops: 5.32, int8Tops: null,
+          bandwidthGBs: 89.6, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 128,
           shaderUnits: 512, baseClockMhz: null, boostClockMhz: 2600
         },
@@ -1133,7 +1139,7 @@
         ],
         specs: {
           fp32Tflops: 3.69, fp16Tflops: 3.69, int8Tops: null,
-          bandwidthGBs: 76.8, pixelRateGps: 25.6, texelRateGts: 51.2,
+          bandwidthGBs: 76.8, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'DDR5', busWidth: 128,
           shaderUnits: 768, baseClockMhz: null, boostClockMhz: 2400
         },
@@ -1152,7 +1158,7 @@
         ],
         specs: {
           fp32Tflops: 2.2, fp16Tflops: 2.2, int8Tops: null,
-          bandwidthGBs: 38.4, pixelRateGps: 8, texelRateGts: 32,
+          bandwidthGBs: 38.4, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128,
           shaderUnits: 512, baseClockMhz: null, boostClockMhz: 2100
         },
@@ -1171,7 +1177,7 @@
         ],
         specs: {
           fp32Tflops: 2.2, fp16Tflops: 2.2, int8Tops: null,
-          bandwidthGBs: 43.7, pixelRateGps: 8, texelRateGts: 32,
+          bandwidthGBs: 43.7, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128,
           shaderUnits: 704, baseClockMhz: null, boostClockMhz: 1250
         },
@@ -1288,7 +1294,7 @@
           'ACM-G11', 'Alchemist', 'Intel Arc A380 Graphics'
         ],
         specs: {
-          fp32Tflops: 4.92, fp16Tflops: 4.92, int8Tops: null,
+          fp32Tflops: 4.1, fp16Tflops: 4.1, int8Tops: null,
           bandwidthGBs: 186, pixelRateGps: 76.8, texelRateGts: 153.6,
           triangleRateGts: null, vramGB: 6, memType: 'GDDR6', busWidth: 96,
           shaderUnits: 1024, baseClockMhz: null, boostClockMhz: 2000
@@ -1312,7 +1318,7 @@
         ],
         specs: {
           fp32Tflops: 4.1, fp16Tflops: 4.1, int8Tops: null,
-          bandwidthGBs: 136, pixelRateGps: 16, texelRateGts: 128,
+          bandwidthGBs: 136, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128,
           shaderUnits: 1024, baseClockMhz: null, boostClockMhz: 2000
         },
@@ -1331,7 +1337,7 @@
         ],
         specs: {
           fp32Tflops: 4.5, fp16Tflops: 4.5, int8Tops: null,
-          bandwidthGBs: 120, pixelRateGps: 16, texelRateGts: 128,
+          bandwidthGBs: 120, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128,
           shaderUnits: 1024, baseClockMhz: null, boostClockMhz: 2200
         },
@@ -1350,7 +1356,7 @@
         ],
         specs: {
           fp32Tflops: 2.15, fp16Tflops: 2.15, int8Tops: null,
-          bandwidthGBs: 68, pixelRateGps: 16.8, texelRateGts: 67.2,
+          bandwidthGBs: 68, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128,
           shaderUnits: 768, baseClockMhz: null, boostClockMhz: 1400
         },
@@ -1370,7 +1376,7 @@
         ],
         specs: {
           fp32Tflops: 1.79, fp16Tflops: 1.79, int8Tops: null,
-          bandwidthGBs: 68, pixelRateGps: 16.8, texelRateGts: 67.2,
+          bandwidthGBs: 68, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128,
           shaderUnits: 640, baseClockMhz: null, boostClockMhz: 1400
         },
@@ -1389,7 +1395,7 @@
         ],
         specs: {
           fp32Tflops: 0.46, fp16Tflops: 0.46, int8Tops: null,
-          bandwidthGBs: 41.6, pixelRateGps: 9, texelRateGts: 36,
+          bandwidthGBs: 41.6, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128,
           shaderUnits: 192, baseClockMhz: 350, boostClockMhz: 1150
         },
@@ -1408,7 +1414,7 @@
         ],
         specs: {
           fp32Tflops: 0.44, fp16Tflops: 0.44, int8Tops: null,
-          bandwidthGBs: 34.1, pixelRateGps: 9, texelRateGts: 36,
+          bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128,
           shaderUnits: 192, baseClockMhz: 300, boostClockMhz: 1150
         },
@@ -1427,7 +1433,7 @@
         ],
         specs: {
           fp32Tflops: 0.44, fp16Tflops: 0.44, int8Tops: null,
-          bandwidthGBs: 34.1, pixelRateGps: 6.9, texelRateGts: 27.6,
+          bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null,
           triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128,
           shaderUnits: 192, baseClockMhz: 350, boostClockMhz: 1150
         },

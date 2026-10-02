@@ -61,6 +61,13 @@ window.NOVA_GPU_DB_PARTS.push({
       note: 'GB206（48 ROP / 144 TMU），有 8GB / 16GB 两种显存版本'
     },
     {
+      id: 'nvidia-rtx-5050', vendor: 'NVIDIA', name: 'GeForce RTX 5050', family: 'GeForce RTX 50',
+      type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['RTX 5050', 'GeForce RTX 5050', 'NVIDIA GeForce RTX 5050', 'NVIDIA GeForce RTX 5050 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (NVIDIA, NVIDIA GeForce RTX 5050 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'GB207', 'NVIDIA GB207'],
+      specs: { fp32Tflops: 13.16, fp16Tflops: 13.16, bandwidthGBs: 320, pixelRateGps: 82.24, texelRateGts: 205.6, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 2560, gpuCores: null, baseClockMhz: 2310, boostClockMhz: 2570 },
+      note: 'GB207-300（32 ROP / 80 TMU），128-bit GDDR6 20 Gbps（320 GB/s）。RTX 50 系唯一仍用 GDDR6 的型号；FP32 = 2560×2×2570/1e6 = 13.16。来源：Wikipedia《GeForce RTX 50 series》桌面规格表。'
+    },
+    {
       id: 'nvidia-rtx-5060', vendor: 'NVIDIA', name: 'GeForce RTX 5060', family: 'GeForce RTX 50',
       type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RTX 5060', 'GeForce RTX 5060', 'NVIDIA GeForce RTX 5060', 'NVIDIA GeForce RTX 5060 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (NVIDIA, NVIDIA GeForce RTX 5060 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'GB206', 'NVIDIA GB206'],
@@ -925,28 +932,42 @@ window.NOVA_GPU_DB_PARTS.push({
       id: 'amd-rx-9070-xt', vendor: 'AMD', name: 'Radeon RX 9070 XT', family: 'Radeon RX 9000',
       type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 9070 XT', 'Radeon RX 9070 XT', 'AMD Radeon RX 9070 XT', 'AMD Radeon RX 9070 XT Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 9070 XT Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 48', 'AMD Navi 48', 'gfx1201'],
-      specs: { fp32Tflops: 24.33, fp16Tflops: 24.33, bandwidthGBs: 644.6, pixelRateGps: 380.2, texelRateGts: 760.3, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 4096, gpuCores: null, baseClockMhz: 1660, boostClockMhz: 2970 },
+      specs: { fp32Tflops: 48.66, fp16Tflops: 48.66, bandwidthGBs: 644.6, pixelRateGps: 380.2, texelRateGts: 760.3, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 4096, gpuCores: null, baseClockMhz: 1660, boostClockMhz: 2970 },
       note: 'Navi 48（128 ROP / 256 TMU），20 Gbps GDDR6'
     },
     {
       id: 'amd-rx-9070', vendor: 'AMD', name: 'Radeon RX 9070', family: 'Radeon RX 9000',
       type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 9070', 'Radeon RX 9070', 'AMD Radeon RX 9070', 'AMD Radeon RX 9070 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 9070 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 48', 'AMD Navi 48', 'gfx1201'],
-      specs: { fp32Tflops: 18.06, fp16Tflops: 18.06, bandwidthGBs: 644.6, pixelRateGps: 322.6, texelRateGts: 564.5, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 3584, gpuCores: null, baseClockMhz: 1330, boostClockMhz: 2520 },
+      specs: { fp32Tflops: 36.13, fp16Tflops: 36.13, bandwidthGBs: 644.6, pixelRateGps: 322.6, texelRateGts: 564.5, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 3584, gpuCores: null, baseClockMhz: 1330, boostClockMhz: 2520 },
       note: 'Navi 48 削减版（128 ROP / 224 TMU）'
     },
     {
       id: 'amd-rx-9070-gre', vendor: 'AMD', name: 'Radeon RX 9070 GRE', family: 'Radeon RX 9000',
       type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 9070 GRE', 'Radeon RX 9070 GRE', 'AMD Radeon RX 9070 GRE', 'AMD Radeon RX 9070 GRE Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 9070 GRE Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 48', 'AMD Navi 48', 'gfx1201'],
-      specs: { fp32Tflops: 17.14, fp16Tflops: 17.14, bandwidthGBs: 480, pixelRateGps: 267.8, texelRateGts: 535.7, vramGB: 12, memType: 'GDDR6', busWidth: 192, shaderUnits: 3072, gpuCores: null, baseClockMhz: null, boostClockMhz: 2790 },
+      specs: { fp32Tflops: 34.28, fp16Tflops: 34.28, bandwidthGBs: 480, pixelRateGps: 267.8, texelRateGts: 535.7, vramGB: 12, memType: 'GDDR6', busWidth: 192, shaderUnits: 3072, gpuCores: null, baseClockMhz: null, boostClockMhz: 2790 },
       note: '中国特供版本，96 ROP / 192 TMU，192-bit 12GB'
+    },
+    {
+      id: 'amd-rx-9060', vendor: 'AMD', name: 'Radeon RX 9060', family: 'Radeon RX 9000',
+      type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['RX 9060', 'Radeon RX 9060', 'AMD Radeon RX 9060', 'AMD Radeon RX 9060 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 9060 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 44', 'AMD Navi 44'],
+      specs: { fp32Tflops: 21.43, fp16Tflops: 21.43, bandwidthGBs: 288, pixelRateGps: 191.36, texelRateGts: 334.88, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 1792, gpuCores: null, baseClockMhz: 2400, boostClockMhz: 2990 },
+      note: 'Navi 44 精简版（64 ROP / 112 TMU），128-bit GDDR6 18 Gbps（288 GB/s）。RDNA 4 双发射：FP32 = 1792×4×2990/1e6 = 21.43。来源：Wikipedia《Radeon RX 9000 series》桌面规格表。'
+    },
+    {
+      id: 'amd-rx-9050', vendor: 'AMD', name: 'Radeon RX 9050', family: 'Radeon RX 9000',
+      type: 'desktop', platform: 'desktop', year: 2026, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['RX 9050', 'Radeon RX 9050', 'AMD Radeon RX 9050', 'AMD Radeon RX 9050 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 9050 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 44', 'AMD Navi 44'],
+      specs: { fp32Tflops: 10.65, fp16Tflops: 10.65, bandwidthGBs: 288, pixelRateGps: 166.4, texelRateGts: 166.4, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 1024, gpuCores: null, baseClockMhz: 1920, boostClockMhz: 2600 },
+      note: 'Navi 44 入门款（64 ROP / 64 TMU），128-bit GDDR6 18 Gbps（288 GB/s）。仅 APAC / 日本 / 拉美发售。FP32 = 1024×4×2600/1e6 = 10.65。来源：Wikipedia《Radeon RX 9000 series》桌面规格表。'
     },
     {
       id: 'amd-rx-9060-xt', vendor: 'AMD', name: 'Radeon RX 9060 XT', family: 'Radeon RX 9000',
       type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 9060 XT', 'Radeon RX 9060 XT', 'AMD Radeon RX 9060 XT', 'AMD Radeon RX 9060 XT Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 9060 XT Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 44', 'AMD Navi 44', 'gfx1200'],
-      specs: { fp32Tflops: 12.82, fp16Tflops: 12.82, bandwidthGBs: 322, pixelRateGps: 200.3, texelRateGts: 400.6, vramGB: 16, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: 1700, boostClockMhz: 3130 },
+      specs: { fp32Tflops: 25.64, fp16Tflops: 25.64, bandwidthGBs: 322, pixelRateGps: 200.3, texelRateGts: 400.6, vramGB: 16, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: 1700, boostClockMhz: 3130 },
       note: 'Navi 44（64 ROP / 128 TMU），有 8GB / 16GB 两种版本'
     },
 
@@ -955,56 +976,56 @@ window.NOVA_GPU_DB_PARTS.push({
       id: 'amd-rx-7900-xtx', vendor: 'AMD', name: 'Radeon RX 7900 XTX', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7900 XTX', 'Radeon RX 7900 XTX', 'AMD Radeon RX 7900 XTX', 'AMD Radeon RX 7900 XTX Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7900 XTX Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 31', 'AMD Navi 31', 'gfx1100'],
-      specs: { fp32Tflops: 30.72, fp16Tflops: 30.72, bandwidthGBs: 960, pixelRateGps: 480.0, texelRateGts: 960.0, vramGB: 24, memType: 'GDDR6', busWidth: 384, shaderUnits: 6144, gpuCores: null, baseClockMhz: 1900, boostClockMhz: 2500 },
+      specs: { fp32Tflops: 61.44, fp16Tflops: 61.44, bandwidthGBs: 960, pixelRateGps: 480.0, texelRateGts: 960.0, vramGB: 24, memType: 'GDDR6', busWidth: 384, shaderUnits: 6144, gpuCores: null, baseClockMhz: 1900, boostClockMhz: 2500 },
       note: 'Navi 31（192 ROP / 384 TMU），20 Gbps GDDR6'
     },
     {
       id: 'amd-rx-7900-xt', vendor: 'AMD', name: 'Radeon RX 7900 XT', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7900 XT', 'Radeon RX 7900 XT', 'AMD Radeon RX 7900 XT', 'AMD Radeon RX 7900 XT Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7900 XT Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 31', 'AMD Navi 31', 'gfx1100'],
-      specs: { fp32Tflops: 25.80, fp16Tflops: 25.80, bandwidthGBs: 800, pixelRateGps: 460.8, texelRateGts: 806.4, vramGB: 20, memType: 'GDDR6', busWidth: 320, shaderUnits: 5376, gpuCores: null, baseClockMhz: 1500, boostClockMhz: 2400 },
+      specs: { fp32Tflops: 51.61, fp16Tflops: 51.61, bandwidthGBs: 800, pixelRateGps: 460.8, texelRateGts: 806.4, vramGB: 20, memType: 'GDDR6', busWidth: 320, shaderUnits: 5376, gpuCores: null, baseClockMhz: 1500, boostClockMhz: 2400 },
       note: 'Navi 31（192 ROP / 336 TMU），320-bit 20GB'
     },
     {
       id: 'amd-rx-7900-gre', vendor: 'AMD', name: 'Radeon RX 7900 GRE', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7900 GRE', 'Radeon RX 7900 GRE', 'AMD Radeon RX 7900 GRE', 'AMD Radeon RX 7900 GRE Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7900 GRE Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 31', 'AMD Navi 31', 'gfx1100'],
-      specs: { fp32Tflops: 22.99, fp16Tflops: 22.99, bandwidthGBs: 576, pixelRateGps: 359.2, texelRateGts: 718.4, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 5120, gpuCores: null, baseClockMhz: 1270, boostClockMhz: 2245 },
+      specs: { fp32Tflops: 45.98, fp16Tflops: 45.98, bandwidthGBs: 576, pixelRateGps: 359.2, texelRateGts: 718.4, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 5120, gpuCores: null, baseClockMhz: 1270, boostClockMhz: 2245 },
       note: 'Navi 31（160 ROP / 320 TMU），256-bit 16GB'
     },
     {
       id: 'amd-rx-7800-xt', vendor: 'AMD', name: 'Radeon RX 7800 XT', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7800 XT', 'Radeon RX 7800 XT', 'AMD Radeon RX 7800 XT', 'AMD Radeon RX 7800 XT Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7800 XT Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 32', 'AMD Navi 32', 'gfx1101'],
-      specs: { fp32Tflops: 18.66, fp16Tflops: 18.66, bandwidthGBs: 624.1, pixelRateGps: 233.3, texelRateGts: 583.2, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 3840, gpuCores: null, baseClockMhz: 1295, boostClockMhz: 2430 },
+      specs: { fp32Tflops: 37.32, fp16Tflops: 37.32, bandwidthGBs: 624.1, pixelRateGps: 233.3, texelRateGts: 583.2, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 3840, gpuCores: null, baseClockMhz: 1295, boostClockMhz: 2430 },
       note: 'Navi 32（96 ROP / 240 TMU），19.5 Gbps GDDR6'
     },
     {
       id: 'amd-rx-7700-xt', vendor: 'AMD', name: 'Radeon RX 7700 XT', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7700 XT', 'Radeon RX 7700 XT', 'AMD Radeon RX 7700 XT', 'AMD Radeon RX 7700 XT Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7700 XT Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 32', 'AMD Navi 32', 'gfx1101'],
-      specs: { fp32Tflops: 17.58, fp16Tflops: 17.58, bandwidthGBs: 432, pixelRateGps: 244.2, texelRateGts: 549.5, vramGB: 12, memType: 'GDDR6', busWidth: 192, shaderUnits: 3456, gpuCores: null, baseClockMhz: 1700, boostClockMhz: 2544 },
+      specs: { fp32Tflops: 35.17, fp16Tflops: 35.17, bandwidthGBs: 432, pixelRateGps: 244.2, texelRateGts: 549.5, vramGB: 12, memType: 'GDDR6', busWidth: 192, shaderUnits: 3456, gpuCores: null, baseClockMhz: 1700, boostClockMhz: 2544 },
       note: 'Navi 32（96 ROP / 216 TMU），192-bit 12GB'
     },
     {
       id: 'amd-rx-7600-xt', vendor: 'AMD', name: 'Radeon RX 7600 XT', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2024, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7600 XT', 'Radeon RX 7600 XT', 'AMD Radeon RX 7600 XT', 'AMD Radeon RX 7600 XT Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7600 XT Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 33', 'AMD Navi 33', 'gfx1102'],
-      specs: { fp32Tflops: 11.29, fp16Tflops: 11.29, bandwidthGBs: 288, pixelRateGps: 176.3, texelRateGts: 352.6, vramGB: 16, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: 1720, boostClockMhz: 2755 },
+      specs: { fp32Tflops: 22.57, fp16Tflops: 22.57, bandwidthGBs: 288, pixelRateGps: 176.3, texelRateGts: 352.6, vramGB: 16, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: 1720, boostClockMhz: 2755 },
       note: 'Navi 33（64 ROP / 128 TMU），128-bit 16GB'
     },
     {
       id: 'amd-rx-7600', vendor: 'AMD', name: 'Radeon RX 7600', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7600', 'Radeon RX 7600', 'AMD Radeon RX 7600', 'AMD Radeon RX 7600 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7600 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 33', 'AMD Navi 33', 'gfx1102'],
-      specs: { fp32Tflops: 10.88, fp16Tflops: 10.88, bandwidthGBs: 288, pixelRateGps: 169.9, texelRateGts: 339.8, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: 1720, boostClockMhz: 2655 },
+      specs: { fp32Tflops: 21.75, fp16Tflops: 21.75, bandwidthGBs: 288, pixelRateGps: 169.9, texelRateGts: 339.8, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: 1720, boostClockMhz: 2655 },
       note: 'Navi 33 满血（64 ROP / 128 TMU）'
     },
     {
       id: 'amd-rx-7650-gre', vendor: 'AMD', name: 'Radeon RX 7650 GRE', family: 'Radeon RX 7000',
       type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7650 GRE', 'Radeon RX 7650 GRE', 'AMD Radeon RX 7650 GRE', 'AMD Radeon RX 7650 GRE Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7650 GRE Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 33', 'AMD Navi 33', 'gfx1102'],
-      specs: { fp32Tflops: 11.04, fp16Tflops: 11.04, bandwidthGBs: 288, pixelRateGps: 172.5, texelRateGts: 344.9, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: null, boostClockMhz: 2695 },
+      specs: { fp32Tflops: 22.08, fp16Tflops: 22.08, bandwidthGBs: 288, pixelRateGps: 172.5, texelRateGts: 344.9, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: null, boostClockMhz: 2695 },
       note: '2025 年中国特供版本（Navi 33）'
     },
 
@@ -1348,21 +1369,21 @@ window.NOVA_GPU_DB_PARTS.push({
       id: 'amd-rx-7900m', vendor: 'AMD', name: 'Radeon RX 7900M', family: 'Radeon RX 7000M',
       type: 'laptop', platform: 'laptop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7900M', 'Radeon RX 7900M', 'AMD Radeon RX 7900M', 'AMD Radeon RX 7900M Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7900M Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 31', 'AMD Navi 31', 'gfx1100'],
-      specs: { fp32Tflops: 19.26, fp16Tflops: 19.26, bandwidthGBs: 576, pixelRateGps: 267.5, texelRateGts: 601.9, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 4608, gpuCores: null, baseClockMhz: null, boostClockMhz: 2090 },
+      specs: { fp32Tflops: 38.52, fp16Tflops: 38.52, bandwidthGBs: 576, pixelRateGps: 267.5, texelRateGts: 601.9, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 4608, gpuCores: null, baseClockMhz: null, boostClockMhz: 2090 },
       note: 'Navi 31 移动旗舰（128 ROP / 288 TMU）'
     },
     {
       id: 'amd-rx-7600m-xt', vendor: 'AMD', name: 'Radeon RX 7600M XT', family: 'Radeon RX 7000M',
       type: 'laptop', platform: 'laptop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7600M XT', 'Radeon RX 7600M XT', 'AMD Radeon RX 7600M XT', 'AMD Radeon RX 7600M XT Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7600M XT Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 33', 'AMD Navi 33', 'gfx1102'],
-      specs: { fp32Tflops: 9.42, fp16Tflops: 9.42, bandwidthGBs: 288, pixelRateGps: 147.2, texelRateGts: 294.4, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: null, boostClockMhz: 2300 },
+      specs: { fp32Tflops: 18.84, fp16Tflops: 18.84, bandwidthGBs: 288, pixelRateGps: 147.2, texelRateGts: 294.4, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 2048, gpuCores: null, baseClockMhz: null, boostClockMhz: 2300 },
       note: 'Navi 33 满血移动版（64 ROP / 128 TMU）'
     },
     {
       id: 'amd-rx-7600m', vendor: 'AMD', name: 'Radeon RX 7600M', family: 'Radeon RX 7000M',
       type: 'laptop', platform: 'laptop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: false,
       aliases: ['RX 7600M', 'Radeon RX 7600M', 'AMD Radeon RX 7600M', 'AMD Radeon RX 7600M Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon RX 7600M Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Navi 33', 'AMD Navi 33', 'gfx1102'],
-      specs: { fp32Tflops: 7.42, fp16Tflops: 7.42, bandwidthGBs: 288, pixelRateGps: 132.5, texelRateGts: 231.8, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 1792, gpuCores: null, baseClockMhz: null, boostClockMhz: 2070 },
+      specs: { fp32Tflops: 14.84, fp16Tflops: 14.84, bandwidthGBs: 288, pixelRateGps: 132.5, texelRateGts: 231.8, vramGB: 8, memType: 'GDDR6', busWidth: 128, shaderUnits: 1792, gpuCores: null, baseClockMhz: null, boostClockMhz: 2070 },
       note: 'Navi 33 移动版（64 ROP / 112 TMU）'
     },
     {
@@ -1406,35 +1427,35 @@ window.NOVA_GPU_DB_PARTS.push({
       id: 'amd-radeon-890m', vendor: 'AMD', name: 'AMD Radeon 890M', family: 'Radeon 800M (APU)',
       type: 'laptop', platform: 'laptop', year: 2024, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['Radeon 890M', 'AMD Radeon 890M', 'AMD Radeon 890M Graphics', 'AMD Radeon 890M Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon 890M Direct3D11 vs_5_0 ps_5_0, D3D11)', 'gfx1150', 'Strix Point', 'AMD Strix Point'],
-      specs: { fp32Tflops: 5.94, fp16Tflops: 5.94, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 185.6, vramGB: null, memType: 'LPDDR5X', busWidth: null, shaderUnits: 1024, gpuCores: 16, baseClockMhz: null, boostClockMhz: 2900 },
+      specs: { fp32Tflops: 11.88, fp16Tflops: 11.88, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 185.6, vramGB: null, memType: 'LPDDR5X', busWidth: null, shaderUnits: 1024, gpuCores: 16, baseClockMhz: null, boostClockMhz: 2900 },
       note: 'Strix Point 核显，RDNA 3.5，16 CU；显存与带宽取决于系统内存'
     },
     {
       id: 'amd-radeon-880m', vendor: 'AMD', name: 'AMD Radeon 880M', family: 'Radeon 800M (APU)',
       type: 'laptop', platform: 'laptop', year: 2024, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['Radeon 880M', 'AMD Radeon 880M', 'AMD Radeon 880M Graphics', 'AMD Radeon 880M Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon 880M Direct3D11 vs_5_0 ps_5_0, D3D11)', 'gfx1150', 'Strix Point', 'AMD Strix Point'],
-      specs: { fp32Tflops: 4.45, fp16Tflops: 4.45, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 139.2, vramGB: null, memType: 'LPDDR5X', busWidth: null, shaderUnits: 768, gpuCores: 12, baseClockMhz: null, boostClockMhz: 2900 },
+      specs: { fp32Tflops: 8.91, fp16Tflops: 8.91, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 139.2, vramGB: null, memType: 'LPDDR5X', busWidth: null, shaderUnits: 768, gpuCores: 12, baseClockMhz: null, boostClockMhz: 2900 },
       note: 'Strix Point 核显，RDNA 3.5，12 CU'
     },
     {
       id: 'amd-radeon-780m', vendor: 'AMD', name: 'AMD Radeon 780M', family: 'Radeon 700M (APU)',
       type: 'laptop', platform: 'laptop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['Radeon 780M', 'AMD Radeon 780M', 'AMD Radeon 780M Graphics', 'AMD Radeon 780M Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon 780M Direct3D11 vs_5_0 ps_5_0, D3D11)', 'gfx1103', 'Phoenix', 'AMD Phoenix'],
-      specs: { fp32Tflops: 4.15, fp16Tflops: 4.15, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 129.6, vramGB: null, memType: 'DDR5/LPDDR5', busWidth: null, shaderUnits: 768, gpuCores: 12, baseClockMhz: null, boostClockMhz: 2700 },
+      specs: { fp32Tflops: 8.29, fp16Tflops: 8.29, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 129.6, vramGB: null, memType: 'DDR5/LPDDR5', busWidth: null, shaderUnits: 768, gpuCores: 12, baseClockMhz: null, boostClockMhz: 2700 },
       note: 'Phoenix 核显，RDNA 3，12 CU；共享系统内存'
     },
     {
       id: 'amd-radeon-760m', vendor: 'AMD', name: 'AMD Radeon 760M', family: 'Radeon 700M (APU)',
       type: 'laptop', platform: 'laptop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['Radeon 760M', 'AMD Radeon 760M', 'AMD Radeon 760M Graphics', 'AMD Radeon 760M Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon 760M Direct3D11 vs_5_0 ps_5_0, D3D11)', 'gfx1103', 'Phoenix', 'AMD Phoenix'],
-      specs: { fp32Tflops: 2.66, fp16Tflops: 2.66, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 83.2, vramGB: null, memType: 'DDR5/LPDDR5', busWidth: null, shaderUnits: 512, gpuCores: 8, baseClockMhz: null, boostClockMhz: 2600 },
+      specs: { fp32Tflops: 5.32, fp16Tflops: 5.32, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 83.2, vramGB: null, memType: 'DDR5/LPDDR5', busWidth: null, shaderUnits: 512, gpuCores: 8, baseClockMhz: null, boostClockMhz: 2600 },
       note: 'Phoenix 核显，RDNA 3，8 CU'
     },
     {
       id: 'amd-radeon-740m', vendor: 'AMD', name: 'AMD Radeon 740M', family: 'Radeon 700M (APU)',
       type: 'laptop', platform: 'laptop', year: 2023, api: 'd3d12', apis: ['d3d12', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['Radeon 740M', 'AMD Radeon 740M', 'AMD Radeon 740M Graphics', 'AMD Radeon 740M Direct3D11 vs_5_0 ps_5_0', 'ANGLE (AMD, AMD Radeon 740M Direct3D11 vs_5_0 ps_5_0, D3D11)', 'gfx1103', 'Phoenix', 'AMD Phoenix'],
-      specs: { fp32Tflops: 1.28, fp16Tflops: 1.28, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 40.0, vramGB: null, memType: 'DDR5/LPDDR5', busWidth: null, shaderUnits: 256, gpuCores: 4, baseClockMhz: null, boostClockMhz: 2500 },
+      specs: { fp32Tflops: 2.56, fp16Tflops: 2.56, bandwidthGBs: null, pixelRateGps: null, texelRateGts: 40.0, vramGB: null, memType: 'DDR5/LPDDR5', busWidth: null, shaderUnits: 256, gpuCores: 4, baseClockMhz: null, boostClockMhz: 2500 },
       note: 'Phoenix 核显，RDNA 3，4 CU'
     },
     {
