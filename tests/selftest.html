@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>NovaMark-Lite 自检</title>
+<link rel="stylesheet" href="../assets/css/style.css">
+</head>
+<body>
+<div class="app">
+  <h1>NovaMark-Lite 自检</h1>
+  <div class="row mb16" style="gap:10px">
+    <button class="btn primary" id="btn-full">运行完整自检（含真实 WebGL2 基准）</button>
+    <span class="badge" id="status">等待</span>
+  </div>
+  <div class="card"><pre class="mono small" id="result" style="white-space:pre-wrap; margin:0"></pre></div>
+</div>
+
+<script src="../assets/js/core/util.js"></script>
+<script src="../assets/js/data/gpu-db-part-nvidia-amd.js"></script>
+<script src="../assets/js/data/gpu-db-part-intel-apple-qualcomm.js"></script>
+<script src="../assets/js/data/gpu-db-part-mobile.js"></script>
+<script src="../assets/js/data/gpu-db.js"></script>
+<script src="../assets/js/detect/device.js"></script>
+<script src="../assets/js/detect/gpu-match.js"></script>
+<script src="../assets/js/report/charts.js"></script>
+<script src="../assets/js/bench/shaders/wgsl.js"></script>
+<script src="../assets/js/bench/shaders/glsl.js"></script>
+<script src="../assets/js/bench/shaders/scene.js"></script>
+<script src="../assets/js/bench/shaders/scene-glsl.js"></script>
+<script src="../assets/js/bench/engine.js"></script>
+<script src="../assets/js/bench/tests/scene-ring.js"></script>
+<script src="../assets/js/bench/tests/vsbm.js"></script>
+<script src="../assets/js/bench/tests/scene.js"></script>
+<script src="../assets/js/score/score.js"></script>
+<script src="../assets/js/report/report.js"></script>
+<script src="../assets/js/bench/suite.js"></script>
+<script src="../assets/js/ui/app.js"></script>
+
+<script>
+(function () {
+  'use strict';
+  var out = [];
+  var pass = 0, fail = 0;
+
+  function line(ok, msg, extra) {
+    if (ok) pass++; else fail++;
+    out.push((ok ? '[PASS] ' : '[FAIL] ') + msg + (extra === undefined || extra === '' ? '' : '  →  ' + extra));
+    render();
+  }
+  function note(msg) { out.push('       ' + msg); render(); }
+  function section(t) { out.push(''); out.push('=== ' + t + ' ==='); render(); }
+  function render() {
+    document.getElementById('result').textContent = out.join('\n');
+  }
+  function done() {
+    out.push('');
+    out.push('结果： ' + pass + ' 通过 / ' + fail + ' 失败');
+    document.getElementById('status').textContent = fail === 0 ? ('全部通过 (' + pass + ')') : (fail + ' 项失败');
+    document.getElementById('status').className = 'badge ' + (fail === 0 ? 'ok' : 'bad');
+    document.title = 'SELFTEST:' + (fail === 0 ? 'PASS' : 'FAIL') + ':' + pass + '/' + (pass + fail);
+    render();
+  }
+
+  /* ---------------- 1. 模块加载 ---------------- */
+  section('模块加载');
+  var N = window.Nova || {};
+  line(!!N.util, 'core/util.js 已加载');
+  line(!!N.detect, 'detect/device.js 已加载');
+  line(!!N.gpuMatch, 'detect/gpu-match.js 已加载');
+  line(!!window.NOVA_GPU_DB, 'data/gpu-db.js 已加载', window.NOVA_GPU_DB ? window.NOVA_GPU_DB.gpus.length + ' 款 GPU' : '');
+  line(!!window.NovaCharts, 'report/charts.js 已加载', window.NovaCharts ? 'v' + NovaCharts.version : '');
+  line(!!N.sceneShaders && !!N.sceneShaders.wgsl, 'shaders/scene.js 已加载（WGSL 场景着色器）',
+    N.sceneShaders && N.sceneShaders.wgsl ? Object.keys(N.sceneShaders.wgsl).length + ' 个 WGSL 入口' : '');
+  line(!!N.sceneShaders && !!N.sceneShaders.glsl, 'shaders/scene-glsl.js 已加载（GLSL 场景着色器）',
+    N.sceneShaders && N.sceneShaders.glsl ? Object.keys(N.sceneShaders.glsl).length + ' 个 GLSL 入口' : '');
+  line(!!N.shadersWGSL, 'shaders/wgsl.js 已加载（球体环用到的 WGSL 着色器）',
+    N.shadersWGSL ? Object.keys(N.shadersWGSL).length + ' 个着色器' : '');
+  line(!!N.shadersGLSL, 'shaders/glsl.js 已加载（球体环用到的 GLSL ES 3.00 着色器）',
+    N.shadersGLSL ? Object.keys(N.shadersGLSL).length + ' 个着色器' : '');
+  line(!!N.engine, 'bench/engine.js 已加载');
+  line(!!N.sceneFactory, 'bench/tests/scene.js 已加载');
+  line(!!N.makeSceneTest, 'Nova.makeSceneTest 可用（综合测试 · 四段序列）');
+  line(!!N.makeRingSceneTest, 'bench/tests/scene-ring.js 已加载 → Nova.makeRingSceneTest 可用（球体环）');
+  line(!!N.makeVsbmTest, 'bench/tests/vsbm.js 已加载 → Nova.makeVsbmTest 可用（毒蘑菇）');
+  line(!N.testsWebGPU && !N.testsWebGL2, 'NovaMark-Lite：微基准测试集不存在（Nova.testsWebGPU / testsWebGL2 未定义）');
+  line(!!N.score, 'score/score.js 已加载', N.score ? '基线 ' + N.score.BASELINE_VERSION : '');
+  line(!!N.report, 'report/report.js 已加载');
+  line(!!N.suite, 'bench/suite.js 已加载');
+  line(!!N.app, 'ui/app.js 已加载');
+
+  /* ---------------- 2. 评分模型（单维度 / 三个场景子项） ---------------- */
+  section('评分模型（NovaMark-Lite：综合场景一个维度，含 ring / vsbm / scene 三个子项）');
+  line((N.score.DIMENSIONS || []).length === 1 && N.score.DIMENSIONS[0].id === 'scene',
+    '维度表只有一个「综合场景」维度',
+    (N.score.DIMENSIONS || []).map(function (d) { return d.id + '=' + d.weight; }).join(', '));
+  line((N.score.DIMENSIONS[0].ids || []).join(',') === 'ring,vsbm,scene',
+    '维度子项为 ring / vsbm / scene 三项', (N.score.DIMENSIONS[0].ids || []).join(','));
+  line(Object.keys(N.score.BASELINE).length === 3 &&
+       N.score.BASELINE.ring > 0 && N.score.BASELINE.vsbm > 0 && N.score.BASELINE.scene > 0,
+    '基线表含 ring / vsbm / scene 三项',
+    'ring=' + N.score.BASELINE.ring + ' vsbm=' + N.score.BASELINE.vsbm + ' scene=' + N.score.BASELINE.scene + ' FPS');
+  line(!!N.score.META.ring && !!N.score.META.vsbm && !!N.score.META.scene, '元数据表含 ring / vsbm / scene');
+  line(!N.score.META.fill && !N.score.META.bandwidth && !N.score.META.latency,
+    '微基准（fill / bandwidth / latency …）不在元数据表里');
+
+  var baseResults = [
+    { id: 'ring', name: '球体环（原版最简场景）', group: 'scene', status: 'done', metric: N.score.BASELINE.ring, unit: 'FPS', valid: true, cv: 0.01 },
+    { id: 'vsbm', name: '毒蘑菇低压力测试', group: 'scene', status: 'done', metric: N.score.BASELINE.vsbm, unit: 'FPS', valid: true, cv: 0.01 },
+    { id: 'scene', name: '综合场景测试', group: 'scene', status: 'done', metric: N.score.BASELINE.scene, unit: 'FPS', valid: true, cv: 0.01 }
+  ];
+  var model = N.score.dimensions(baseResults, { flags: {} });
+  line(Math.abs(model.total - 1000) < 1, '三项都在基线的设备总分为 1000', '实测 ' + model.total);
+  line((model.dimensions || []).length === 1 && Math.abs(model.dimensions[0].score - 50) < 0.5,
+    '基线设备维度分为 50（三项几何平均）', '综合场景 = ' + (model.dimensions[0].score === null ? 'N/A' : model.dimensions[0].score.toFixed(3)));
+  line(model.validParts === 3 && model.totalParts === 3, '有效项统计为 3 / 3', model.validParts + ' / ' + model.totalParts);
+  line(Math.abs(model.dimensions[0].weight - 1) < 1e-9, '维度权重为 1.0', String(model.dimensions[0].weight));
+
+  var doubled = N.score.dimensions(baseResults.map(function (r) {
+    return Object.assign({}, r, { metric: N.score.BASELINE[r.id] * 2 });
+  }), { flags: {} });
+  line(doubled.total > 1000 && doubled.total < 1400, '三项全部翻倍 → 总分单调上升且不发散（20 × 66.7 ≈ 1333）',
+    '1000 → ' + (doubled.total === null ? 'N/A' : doubled.total));
+  var half = N.score.dimensions(baseResults.map(function (r) {
+    return Object.assign({}, r, { metric: N.score.BASELINE[r.id] / 2 });
+  }), { flags: {} });
+  line(half.total !== null && half.total > 600 && half.total < 700, '三项全部减半 → 总分 20 × 33.3 ≈ 667',
+    '实测 ' + (half.total === null ? 'N/A' : half.total));
+
+  // 几何平均的惩罚性：一项挂到 1 分，总分应被明显拉低（低于算术平均给出的分数）
+  var uneven = N.score.dimensions([
+    { id: 'ring', status: 'done', metric: N.score.BASELINE.ring * 4, unit: 'FPS', valid: true, cv: 0.01 },
+    { id: 'vsbm', status: 'done', metric: N.score.BASELINE.vsbm * 4, unit: 'FPS', valid: true, cv: 0.01 },
+    { id: 'scene', status: 'done', metric: 1, unit: 'FPS', valid: true, cv: 0.01 }
+  ], { flags: {} });
+  var arithmetic = (80 + 80 + 0.7) / 3 * 20;
+  line(uneven.total !== null && uneven.total < arithmetic * 0.7,
+    '几何平均惩罚偏科：两项 80 分 + 一项 0.7 分 → 总分远低于算术平均',
+    '几何平均 ' + (uneven.total === null ? 'N/A' : uneven.total.toFixed(1)) + ' vs 算术平均 ' + arithmetic.toFixed(1));
+
+  var zeroModel = N.score.dimensions(baseResults.map(function (r) {
+    return Object.assign({}, r, { metric: 0 });
+  }), { flags: {} });
+  line(zeroModel.total !== null && zeroModel.total < 60, '三项帧率全为 0 → 总分接近 0', '实测 ' + zeroModel.total);
+
+  var skipScene = N.score.dimensions(baseResults.map(function (r) {
+    return r.id === 'scene' ? { id: 'scene', status: 'skipped', reason: '测试跳过', metric: null, valid: false } : r;
+  }), { flags: {} });
+  line(skipScene.total !== null && skipScene.validParts === 2 && skipScene.totalParts === 3,
+    '综合场景被跳过 → 仍能出分，有效项 2 / 3（权重重新归一化）',
+    'total=' + (skipScene.total === null ? 'N/A' : skipScene.total) + ' valid=' + skipScene.validParts + '/' + skipScene.totalParts);
+
+  var skipAll = N.score.dimensions([
+    { id: 'ring', status: 'skipped', metric: null, valid: false },
+    { id: 'vsbm', status: 'failed', metric: null, valid: false },
+    { id: 'scene', status: 'skipped', metric: null, valid: false }
+  ], { flags: {} });
+  line(skipAll.total === null && skipAll.validParts === 0 && skipAll.totalParts === 3,
+    '三项全部无效 → 总分为 null，有效项 0 / 3', 'validParts=' + skipAll.validParts + ' total=' + skipAll.total);
+
+  var abs = N.score.absolute({ id: 'scene', metric: N.score.BASELINE.scene * 2 });
+  line(abs.index !== null && Math.abs(abs.index - 2000) < 1,
+    '绝对指数：实测为基线 2 倍 → 2000（综合场景基线 ' + N.score.BASELINE.scene + '）', String(abs.index));
+  var absRing = N.score.absolute({ id: 'ring', metric: N.score.BASELINE.ring / 2 });
+  line(absRing.index !== null && Math.abs(absRing.index - 500) < 1,
+    '绝对指数：球体环实测为基线一半 → 500', String(absRing.index));
+  line(N.score.efficiency(baseResults, { specs: { fp32Tflops: 4.375 } }).length === 0,
+    '理论达成率在本版中为空（三项都是场景类负载，无对应理论峰值）');
+
+  var st = N.score.stability([100, 100, 99, 100, 100, 98, 100, 100, 100, 99, 100, 100, 100, 100, 100, 99, 100, 100, 100, 97]);
+  line(st && st.stability > 90 && st.stability < 100, '稳定性计算正常', '稳定性 ' + (st ? st.stability.toFixed(1) : 'N/A') + '% ' + (st && st.passed ? '(通过)' : '(未通过)'));
+
+  var fs = N.score.frameStats([16.7, 16.6, 16.8, 33.3, 16.7, 16.7, 16.9, 16.6, 50.0, 16.7]);
+  line(fs && isFinite(fs.fpsAvg) && isFinite(fs.fps1Low), '帧时间统计正常', 'avg ' + (fs ? fs.fpsAvg.toFixed(1) : '?') + ' FPS, 1% low ' + (fs ? fs.fps1Low.toFixed(1) : '?'));
+  line(fs && fs.fps1Low < fs.fpsAvg, '1% low 低于平均帧率');
+
+  /* ---------------- 3. GPU 识别 ---------------- */
+  section('GPU 型号识别');
+  var samples = [
+    { s: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)', want: 'RTX 3060' },
+    { s: 'ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)', want: 'UHD' },
+    { s: 'ANGLE (AMD, AMD Radeon RX 7900 XTX Direct3D11 vs_5_0 ps_5_0, D3D11)', want: '7900 XTX' },
+    { s: 'Apple M1 Pro', want: 'M1 Pro' },
+    { s: 'Adreno (TM) 740', want: '740' },
+    { s: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)', want: 'SwiftShader' }
+  ];
+  samples.forEach(function (c) {
+    var res = N.gpuMatch.match({ webgl: { unmaskedRenderer: c.s, renderer: c.s, vendor: '' }, webgpu: {}, flags: {} });
+    var name = res.gpu ? res.gpu.name : (res.class ? res.class.label : '未识别');
+    line(name.toLowerCase().indexOf(c.want.toLowerCase()) >= 0 || (res.class && c.want === 'SwiftShader'),
+      '识别「' + c.s.slice(0, 42) + '…」', name + ' (' + res.method + ')');
+  });
+
+  /* ---------------- 4. 图表库 ---------------- */
+  section('图表库');
+  var host = document.createElement('div');
+  host.style.width = '900px';
+  document.body.appendChild(host);
+  var ok = true, err = '';
+  try {
+    var cvs = NovaCharts.demo(host);
+    ok = cvs && cvs.length >= 8;
+    cvs.forEach(function (c) { if (!c.width || !c.height) ok = false; });
+  } catch (e) { ok = false; err = e.message; }
+  line(ok, 'NovaCharts.demo() 渲染 9 种图表', err);
+  if (host.parentNode) host.parentNode.removeChild(host);
+
+  /* ---------------- 5. 报告模块 ---------------- */
+  section('报告模块');
+  var specIdx = N.report.specIndex({ fp32Tflops: 4.375, bandwidthGBs: 192, pixelRateGps: 82, texelRateGts: 136.6 });
+  line(specIdx !== null && Math.abs(specIdx - 1000) < 1, '规格指数锚点：GTX 1060 规格 = 1000', String(specIdx));
+  var cmp = N.report.buildComparison({ results: baseResults, score: model },
+    { gpu: { id: 'nvidia-rtx-3060', name: 'GeForce RTX 3060', vendor: 'NVIDIA', type: 'desktop', specs: { fp32Tflops: 12.74, bandwidthGBs: 360, pixelRateGps: 85.3, texelRateGts: 199 } } });
+  line(cmp.entries.length > 0, '参考机型对比生成成功', cmp.entries.length + ' 项，数据库 ' + cmp.dbSize + ' 款');
+
+  // 造一份「只含三个场景类测试」的假成绩，用来验证报告 / 长图 / 分享链接
+  var fakeFrameTimes = [];
+  for (var fi = 0; fi < 200; fi++) fakeFrameTimes.push(fi % 37 === 0 ? 22.5 : 1000 / 150);
+  var fakeRing = {
+    id: 'ring', name: '球体环（原版最简场景）', group: 'scene', unit: 'FPS', unitScale: 1,
+    backend: 'webgl2', status: 'done', raw: 1400, metric: 1400, samples: [], cv: 0.05, valid: true,
+    meta: { frames: 900, fpsAvg: 1400, fps1Low: 1180, passes: 1, instances: 900, triangles: 288000 }
+  };
+  var fakeVsbm = {
+    id: 'vsbm', name: '毒蘑菇低压力测试（Volume Shader BM）', group: 'scene', unit: 'FPS', unitScale: 1,
+    backend: 'webgl2', status: 'done', raw: 210, metric: 210, samples: [], cv: 0.06, valid: true,
+    meta: { frames: 1200, fpsAvg: 210, fps1Low: 178, levels: 3, levelScale: 1 }
+  };
+  var fakeScene = {
+    id: 'scene', name: '综合场景测试', group: 'scene', unit: 'FPS', unitScale: 1,
+    backend: 'webgl2', status: 'done', raw: 150, metric: 150, samples: [], cv: 0.12, valid: true,
+    meta: {
+      frames: 200, fpsAvg: 150, fps1Low: 132.4, fps01Low: 44.4, p99FrameMs: 22.5, medianFrameMs: 6.67,
+      jitter: 0.08, smoothness: 91.2, frameTimes: fakeFrameTimes,
+      segments: [
+        { id: 'ring', name: '星环（基础单场景）', fps: 320, frames: 40, durationMs: 2000, mode: 'ring' },
+        { id: 'canyon', name: '峡谷·黄昏', fps: 168, frames: 52, durationMs: 3000, mode: 'canyon' },
+        { id: 'cloud', name: '峡谷·云海', fps: 96, frames: 64, durationMs: 3500, mode: 'canyon' },
+        { id: 'city', name: '都市·风暴', fps: 121, frames: 78, durationMs: 4000, mode: 'city' }
+      ],
+      segmentCount: 4, totalDurationMs: 12500, warmupMs: 300, pipelineDepth: 2,
+      renderWidth: 1280, renderHeight: 720, renderPixels: 1280 * 720, preset: 'medium',
+      instances: 1600, triangles: 294912 + 80000 * 1600, terrainTriangles: 294912,
+      rockTriangles: 80000 * 1600, particles: 24000, passes: 9, shadowSize: 2048,
+      durationMs: 12500, normFactor: 1, scoreMetric: 150, scoreBasis: '整条序列平均帧率'
+    }
+  };
+  var fakeResults = [fakeRing, fakeVsbm, fakeScene];
+  var fakeModel = N.score.dimensions(fakeResults, { flags: {} });
+  line(fakeModel.total !== null && fakeModel.validParts === 3 && fakeModel.totalParts === 3,
+    '三个场景类成绩可正常计分', '总分 ' + fakeModel.total + '（' + fakeModel.validParts + '/' + fakeModel.totalParts + '）');
+
+  var fakeDevice = N.detect.detectBrowser();
+  var fakeData = {
+    id: 'NM-TEST-0001', hash: 'deadbeef'.repeat(8), timestamp: Date.now(), version: 'NovaMark-Lite ' + N.VERSION,
+    device: { browser: fakeDevice, os: fakeDevice.os, webgl: { unmaskedRenderer: 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)' }, webgpu: {}, hardware: { cpuCores: 8, screen: { width: 1920, height: 1080 }, devicePixelRatio: 1 }, flags: {} },
+    gpu: { match: { gpu: { name: 'GeForce RTX 3060', vendor: 'NVIDIA', type: 'desktop', specs: { fp32Tflops: 12.74, bandwidthGBs: 360, pixelRateGps: 85.3, texelRateGts: 199 } }, ok: true, confidence: 0.98, method: 'exact' }, displayName: 'GeForce RTX 3060' },
+    results: { results: fakeResults, score: fakeModel, absolute: N.score.absoluteAll(fakeResults), efficiency: [], diagnostics: [], comparison: cmp, extra: { backend: 'WebGL2' } },
+    config: { backendLabel: 'WebGL2', presetName: '自检', resolution: '1280 × 720', timing: '墙钟' }
+  };
+  var safe = true, err2 = '';
+  var txt = '';
+  try {
+    txt = N.report.plainReport(fakeData);
+    var card = N.report.renderCard(fakeData);
+    safe = card && card.width > 0;
+  } catch (e) { safe = false; err2 = e.message; }
+  line(safe, '文本报告 + 成绩单长图渲染成功', err2);
+  line(txt.indexOf('综合测试 · 四段场景序列') >= 0 && txt.indexOf('峡谷·云海') >= 0,
+    '文本报告含四段场景明细');
+  line(txt.indexOf('CR_527') >= 0, '文本报告保留版权声明');
+  var url2 = N.report.shareUrl(fakeData, 'http://x/y');
+  var parsed = N.report.parseShare(url2.split('#')[1]);
+  line(parsed && parsed.s === fakeModel.total, '分享链接编解码往返一致', url2.length + ' 字符');
+  line(/^NM-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(N.suite.makeRunId()), '成绩编号格式正确', N.suite.makeRunId());
+
+  /* ---------------- 6. 套件编排 ---------------- */
+  section('套件编排');
+  Object.keys(N.suite.PRESETS).forEach(function (k) {
+    line(!!N.suite.PRESETS[k].name, '预设 ' + k + ' 存在：' + N.suite.PRESETS[k].desc);
+  });
+  var stdPlan = N.suite.buildList({ kind: 'webgl2', deviceInfo: {}, width: 1280, height: 720, errors: [], theoreticalGBs: 192 }, { preset: 'standard' });
+  line(stdPlan.length === 3 &&
+       stdPlan[0].test.id === 'ring' && stdPlan[1].test.id === 'vsbm' && stdPlan[2].test.id === 'scene',
+    '标准预设的测试清单 = 球体环 + 毒蘑菇 + 综合测试（共 ' + stdPlan.length + ' 项）',
+    stdPlan.map(function (e) { return e.test.id; }).join(' → '));
+  var stressPlan = N.suite.buildList({ kind: 'webgl2', deviceInfo: {}, width: 1280, height: 720, errors: [], theoreticalGBs: 192 }, { preset: 'stress' });
+  line(stressPlan.length === 1 && stressPlan[0].test.id === 'stability',
+    '稳定性预设的测试清单只有稳定性压力测试（共 ' + stressPlan.length + ' 项）');
+  var fullPlan = N.suite.buildList({ kind: 'webgl2', deviceInfo: {}, width: 1280, height: 720, errors: [], theoreticalGBs: 192 }, { preset: 'full' });
+  line(fullPlan.length === 4 &&
+       fullPlan[0].test.id === 'ring' && fullPlan[1].test.id === 'vsbm' &&
+       fullPlan[2].test.id === 'scene' && fullPlan[3].test.id === 'stability',
+    '完整预设 = 球体环 + 毒蘑菇 + 综合测试 + 稳定性压力测试（共 ' + fullPlan.length + ' 项）',
+    fullPlan.map(function (e) { return e.test.id; }).join(' → '));
+
+  /* ---------------- 6b. 全局预热 ---------------- */
+  section('全局预热');
+  line(typeof N.suite.warmup === 'function', 'Nova.suite.warmup 已导出');
+  line(typeof N.suite.warmupMsOf === 'function', 'Nova.suite.warmupMsOf 已导出');
+  line(N.suite.WARMUP_MS === 5000, '标准预设全局预热 5000 ms', String(N.suite.WARMUP_MS));
+  line(N.suite.WARMUP_MS_QUICK === 2500, '快速预设全局预热 2500 ms', String(N.suite.WARMUP_MS_QUICK));
+  line(N.suite.warmupMsOf(N.suite.presetOf('standard')) === 5000 &&
+       N.suite.warmupMsOf(N.suite.presetOf('quick')) === 2500 &&
+       N.suite.warmupMsOf(N.suite.presetOf('full')) === 5000,
+    'warmupMsOf 按预设返回正确时长',
+    'quick=' + N.suite.warmupMsOf(N.suite.presetOf('quick')) +
+    ' standard=' + N.suite.warmupMsOf(N.suite.presetOf('standard')) +
+    ' full=' + N.suite.warmupMsOf(N.suite.presetOf('full')));
+
+  // 球体环测量窗口：拉长是为了压方差（ring 单帧仅 1–2 ms，抖动放大倍数最大）
+  line(typeof N.suite.ringMsOf === 'function', 'Nova.suite.ringMsOf 已导出');
+  line(N.suite.ringMsOf(N.suite.presetOf('standard')) === 15000,
+    '标准预设球体环窗口 15000 ms（原约 7000 ms）', String(N.suite.ringMsOf(N.suite.presetOf('standard'))));
+  line(N.suite.ringMsOf(N.suite.presetOf('quick')) === 8000 &&
+       N.suite.ringMsOf(N.suite.presetOf('full')) === 24000,
+    '快速 8000 / 完整 24000 ms',
+    'quick=' + N.suite.ringMsOf(N.suite.presetOf('quick')) + ' full=' + N.suite.ringMsOf(N.suite.presetOf('full')));
+
+  // 预热不应改动基线或顺序
+  line(N.score.BASELINE.ring === 365 && N.score.BASELINE.vsbm === 176 && N.score.BASELINE.scene === 147,
+    'BASELINE 未被改动（365 / 176 / 147）',
+    'ring=' + N.score.BASELINE.ring + ' vsbm=' + N.score.BASELINE.vsbm + ' scene=' + N.score.BASELINE.scene);
+  var orderPlan = N.suite.buildList({ kind: 'webgl2', deviceInfo: {}, width: 1280, height: 720, errors: [], theoreticalGBs: 192 }, { preset: 'standard' });
+  line(orderPlan.map(function (e) { return e.test.id; }).join(',') === 'ring,vsbm,scene',
+    '测试顺序未被改动（ring → vsbm → scene）',
+    orderPlan.map(function (e) { return e.test.id; }).join(' → '));
+
+  /* ---------------- 7. 真实引擎冒烟测试 ---------------- */
+  section('真实引擎冒烟测试');
+  (async function engineTest() {
+    var canvas = document.createElement('canvas');
+    var fakeInfo = { flags: {}, webgl: {}, webgpu: {} };
+    var ctx = null;
+    // 这里优先要 WebGPU（产品默认走的那条路，也是短时长场景唯一能跑完的路径）：
+    // 实测 WebGL2 后端的综合场景在极短 durationMs 下会卡在同步上（原项目同样如此，
+    // 不是本版引入的），所以下面按后端挑一个能跑完的时长。
+    try {
+      ctx = await N.engine.create(canvas, { deviceInfo: fakeInfo, prefer: 'webgpu', resolution: { width: 640, height: 360 } });
+      line(!!ctx, '图形上下文创建成功', ctx.kind + ' / ' + ctx.backendLabel);
+      line(canvas.width === 640 && canvas.height === 360, '画布分辨率按配置固定', canvas.width + '×' + canvas.height);
+    } catch (e) {
+      // 没有 WebGPU 就退到 WebGL2（此时综合场景冒烟测试用更长时长，见下）
+      try {
+        ctx = await N.engine.create(canvas, { deviceInfo: fakeInfo, prefer: 'webgl2', resolution: { width: 640, height: 360 } });
+        line(!!ctx, '图形上下文创建成功', ctx.kind + ' / ' + ctx.backendLabel + '（WebGPU 不可用，已回退）');
+        line(canvas.width === 640 && canvas.height === 360, '画布分辨率按配置固定', canvas.width + '×' + canvas.height);
+      } catch (e2) {
+        line(false, '图形上下文创建失败', e2.message);
+      }
+    }
+
+    if (ctx) {
+      // 全局预热本身能不能跑通（用 600ms 的缩短版，避免自检变慢）
+      try {
+        var warmT0 = performance.now();
+        var warmTook = await N.suite.warmup(ctx, 600, { emit: function () { }, isAborted: function () { return false; } });
+        line(warmTook > 0 && (performance.now() - warmT0) < 6000,
+          '全局预热可正常执行且不返回结果', '耗时 ' + Math.round(warmTook) + ' ms（请求 600ms）');
+      } catch (eWarm) {
+        line(false, '全局预热抛异常', eWarm.message);
+      }
+      // warmup(0) 应当是 no-op
+      var zeroTook = await N.suite.warmup(ctx, 0, {});
+      line(zeroTook === 0, 'warmup(0) 为 no-op（不预热）', String(zeroTook));
+
+      var harness = new N.engine.Harness(ctx, { warmupMs: 60, measureMs: 120, rounds: 1, targetBatchMs: 12 });
+      var runCustom = function (t) {
+        return harness.runCustom(t, { report: function () { }, isAborted: function () { return false; } });
+      };
+
+      // 球体环（极短时长）
+      if (N.makeRingSceneTest) {
+        try {
+          var ringT = N.makeRingSceneTest(ctx, { preset: 'low', durationMs: 900, warmupMs: 200, tailMs: 100, rounds: 1 });
+          var rr = await runCustom(ringT);
+          line(rr.status === 'done' && rr.meta && rr.meta.fpsAvg > 0, '球体环真实跑通',
+            rr.status === 'done'
+              ? (Number(rr.meta.fpsAvg).toFixed(1) + ' FPS（' + (rr.meta.instances || '?') + ' 实例 / ' + (rr.meta.passes || '?') + ' pass）')
+              : (rr.status + ' ' + (rr.error || rr.reason || '')));
+        } catch (eRing) {
+          line(false, '球体环抛异常', eRing.message);
+        }
+      } else {
+        line(false, 'Nova.makeRingSceneTest 不存在，无法冒烟测试球体环');
+      }
+
+      // 毒蘑菇（极短时长：档位时长由 levelScale 缩小）
+      if (N.makeVsbmTest) {
+        try {
+          var vsbmT = N.makeVsbmTest(ctx, { levelScale: 0.05 });
+          var vr = await runCustom(vsbmT);
+          line(vr.status === 'done' && vr.meta && vr.meta.fpsAvg > 0, '毒蘑菇真实跑通',
+            vr.status === 'done'
+              ? (Number(vr.meta.fpsAvg).toFixed(1) + ' FPS（' +
+                (Array.isArray(vr.meta.levels) ? vr.meta.levels.length : (vr.meta.levels || '?')) + ' 档）')
+              : (vr.status + ' ' + (vr.error || vr.reason || '')));
+        } catch (eVsbm) {
+          line(false, '毒蘑菇抛异常', eVsbm.message);
+        }
+      } else {
+        line(false, 'Nova.makeVsbmTest 不存在，无法冒烟测试毒蘑菇');
+      }
+
+      // 综合场景（极短时长；WebGL2 后端下极短时长会卡住，故按后端挑时长）
+      var sceneMs = ctx.kind === 'webgl2' ? 12000 : 900;
+      note('综合场景冒烟测试时长 ' + sceneMs + 'ms（后端 ' + ctx.kind + '）');
+      try {
+        var sceneT = N.makeSceneTest(ctx, { preset: 'low', durationMs: sceneMs, warmupMs: 200, tailMs: 100, rounds: 1 });
+        var sc = await runCustom(sceneT);
+        var sm = sc.meta || {};
+        line(sc.status === 'done' && sm.fpsAvg > 0, '综合场景真实跑通',
+          sc.status === 'done'
+            ? (Number(sm.fpsAvg).toFixed(1) + ' FPS · 1% low ' + Number(sm.fps1Low).toFixed(1) + ' · ' + sm.triangles + ' 三角形')
+            : (sc.status + ' ' + (sc.error || sc.reason || '')));
+      } catch (e3) {
+        line(false, '综合场景抛异常', e3.message);
+      }
+    }
+
+    done();
+    window.__SELFTEST_DONE__ = true;
+  })();
+})();
+</script>
+</body>
+</html>

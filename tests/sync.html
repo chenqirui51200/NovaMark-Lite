@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>同步策略对比</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:14px 12px 40px; background:#0b0e14; color:#e6edf3;
+         font:15px/1.5 -apple-system,"PingFang SC",system-ui,sans-serif; -webkit-text-size-adjust:100%; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .sub { color:#8b98a9; font-size:13px; margin-bottom:12px; }
+  button { width:100%; padding:15px; font-size:17px; font-weight:700; color:#06121f;
+           background:#4cc2ff; border:0; border-radius:10px; margin-bottom:14px; }
+  button:disabled { opacity:.5; }
+  table { width:100%; border-collapse:collapse; font-size:13px;
+          font-family:ui-monospace,Menlo,monospace; }
+  th,td { padding:6px 5px; border-bottom:1px solid #1d2735; text-align:right; }
+  th:first-child,td:first-child { text-align:left; }
+  th { color:#8b98a9; font-weight:400; font-size:12px; }
+  .ok { color:#7ee787; font-weight:700; }
+  .bad { color:#ff7b72; }
+  .warn { color:#e3b341; }
+  .card { background:#121722; border:1px solid #222c3a; border-radius:10px; padding:11px 12px; margin-bottom:11px; }
+  .card h2 { font-size:15px; margin:0 0 8px; color:#9fd2ff; }
+  #info { font-family:ui-monospace,monospace; font-size:12px; color:#8b98a9; white-space:pre-wrap; }
+  #status { padding:9px 11px; background:#121722; border:1px solid #222c3a; border-radius:8px;
+            font:13px ui-monospace,monospace; color:#9fd2ff; margin-bottom:12px; }
+  textarea { width:100%; height:120px; background:#0d1219; color:#e6edf3; border:1px solid #222c3a;
+             border-radius:8px; padding:9px; font:12px ui-monospace,monospace; }
+</style>
+</head>
+<body>
+<h1>WebGL2 同步策略对比</h1>
+<div class="sub">同一个重负载，用 7 种方式「等 GPU」。<b>耗时最长的那种才是真的等到了。</b></div>
+<button id="go">开始对比</button>
+<div id="status">就绪</div>
+<div id="out"></div>
+
+<script>
+(function () {
+  'use strict';
+  var statusEl = document.getElementById('status');
+  var out = document.getElementById('out');
+  var log = [];
+  function st(s) { statusEl.textContent = s; log.push('[步骤] ' + s); }
+  function yieldUI() { return new Promise(function (r) { setTimeout(r, 0); }); }
+
+  var W = 640, H = 360, LOOP = 4000, PASSES = 6;
+
+  var VS = '#version 300 es\nvoid main(){vec2 p[3]=vec2[3](vec2(-1.,-1.),vec2(3.,-1.),vec2(-1.,3.));gl_Position=vec4(p[gl_VertexID],0.,1.);}';
+  var FS = '#version 300 es\nprecision highp float;\nuniform vec4 uP;\nuniform int uLoop;\nout vec4 o;\n' +
+    'void main(){\n' +
+    '  float a=gl_FragCoord.x*1e-5+1.0001, b=gl_FragCoord.y*1e-5+0.9999;\n' +
+    '  float c=a*1.000001, d=b*0.999999;\n' +
+    '  const float k=1.0000001, m=1e-7;\n' +
+    '  for(int i=0;i<uLoop;i++){\n' +
+    '    a=a*k+m; b=b*k+m; c=c*k+m; d=d*k+m;\n' +
+    '    a=fract(a*1.000001+1e-6);\n' +   // 非线性，阻断闭式化/展开优化
+    '  }\n' +
+    '  o=vec4(a+b+c+d,0.,0.,1.);\n' +
+    '}';
+
+  function compile(gl) {
+    function sh(t, s) {
+      var o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o);
+      if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o));
+      return o;
+    }
+    var p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, VS));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    return p;
+  }
+
+  function mkFbo(gl, internal, fmt, type, w, h) {
+    var tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, fmt, type, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    var fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { fbo: fbo, tex: tex, ok: ok };
+  }
+
+  function drain(gl) { for (var i = 0; i < 16; i++) { if (!gl.getError()) return; } }
+
+  document.getElementById('go').onclick = function () {
+    var btn = this; btn.disabled = true; btn.textContent = '对比中…';
+    out.innerHTML = ''; log = [];
+    st('1/3 建上下文与着色器…');
+
+    yieldUI().then(function () {
+      var cv = document.createElement('canvas');
+      cv.width = W; cv.height = H;
+      cv.style.cssText = 'width:1px;height:1px;opacity:0;position:fixed;left:-99px';
+      document.body.appendChild(cv);
+      var gl = cv.getContext('webgl2', { alpha: false, antialias: false, depth: false, preserveDrawingBuffer: false });
+      if (!gl) throw new Error('拿不到 WebGL2 上下文');
+
+      var hasCBF = !!gl.getExtension('EXT_color_buffer_float');
+      var prog = compile(gl);
+      var uP = gl.getUniformLocation(prog, 'uP');
+      var uLoop = gl.getUniformLocation(prog, 'uLoop');
+      var vao = gl.createVertexArray();
+
+      // 重负载渲染目标：优先用 RGBA16F（这正是出问题的那类目标）
+      var target = hasCBF ? mkFbo(gl, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT, W, H)
+                          : mkFbo(gl, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, W, H);
+      // 自建的 1×1 RGBA8 读回目标
+      var sync8 = mkFbo(gl, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, 1, 1);
+      // 全屏 RGBA8 目标 + 缓冲区：验证「读 1 像素只等第 1 个 tile」的推断
+      var big8 = mkFbo(gl, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, W, H);
+      var bigBuf = new Uint8Array(W * H * 4);
+      var px = new Uint8Array(4);
+
+      var head = 'WebGL2 同步策略对比\n' +
+        'UA: ' + navigator.userAgent + '\n' +
+        '分辨率: ' + W + 'x' + H + '   循环次数: ' + LOOP + '   每策略 pass 数: ' + PASSES + '\n' +
+        'RGBA16F 可用: ' + hasCBF + '   负载目标: ' + (hasCBF ? 'RGBA16F' : 'RGBA8') + '\n' +
+        'performance.now() 粒度: ' + (function () {
+          var best = Infinity;
+          for (var r = 0; r < 20; r++) { var p0 = performance.now();
+            for (var i = 0; i < 5000; i++) { var n = performance.now();
+              if (n > p0) { var d = n - p0; if (d > 0 && d < best) best = d; p0 = n; } } }
+          return isFinite(best) ? best.toFixed(4) + ' ms' : '未知';
+        })() + '\n';
+      log.push(head);
+
+      function draw(passes) {
+        gl.useProgram(prog);
+        gl.uniform4f(uP, 0, 0, 0, 0);
+        gl.uniform1i(uLoop, LOOP);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        gl.viewport(0, 0, W, H);
+        gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+        gl.bindVertexArray(vao);
+        for (var i = 0; i < passes; i++) gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.bindVertexArray(null);
+      }
+
+      // 每种策略：先跑 passes 次绘制，再同步，测墙钟
+      var strategies = [
+        { name: 'A 不同步（基准）', fn: function () { return null; } },
+        { name: 'B readPixels 当前目标(RGBA/UB)', fn: function () {
+            gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); return null; } },
+        { name: 'C readPixels 当前目标(实现格式)', fn: function () {
+            var f = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+            var t = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+            gl.readPixels(0, 0, 1, 1, f, t, px); return null; } },
+        { name: 'D readPixels 无关 RGBA8 目标', fn: function () {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, sync8.fbo);
+            gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo); return null; } },
+        { name: 'E blit→RGBA8 再 readPixels', fn: function () {
+            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, target.fbo);
+            gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, sync8.fbo);
+            gl.blitFramebuffer(0, 0, 1, 1, 0, 0, 1, 1, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, sync8.fbo);
+            gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo); return null; } },
+        { name: 'F gl.finish()', fn: function () { gl.finish(); return null; } },
+        { name: 'G fenceSync+clientWaitSync(0)', fn: function () {
+            var s = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+            if (s) {
+              var dl = performance.now() + 500;
+              for (;;) {
+                var r = gl.clientWaitSync(s, 0, 0);
+                if (r === gl.ALREADY_SIGNALED || r === gl.CONDITION_SATISFIED || r === gl.WAIT_FAILED) break;
+                if (performance.now() > dl) break;
+              }
+              gl.deleteSync(s);
+            }
+            return null; } },
+        { name: 'H gl.finish() + readPixels', fn: function () {
+            gl.finish();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, sync8.fbo);
+            gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo); return null; } },
+        // ↓ 若「读 1 像素只等第 1 个 tile」成立，这两条会明显更慢
+        { name: 'I blit 全屏→RGBA8 + 读全屏', fn: function () {
+            gl.bindFramebuffer(gl.READ_FRAMEBUFFER, target.fbo);
+            gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, big8.fbo);
+            gl.blitFramebuffer(0, 0, W, H, 0, 0, W, H, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, big8.fbo);
+            gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, bigBuf);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo); return null; } },
+        { name: 'J ANY_SAMPLES_PASSED 查询',
+          pre: function () { var q = gl.createQuery(); gl.beginQuery(gl.ANY_SAMPLES_PASSED, q); ctxQ = q; },
+          fn: function () {
+            gl.endQuery(gl.ANY_SAMPLES_PASSED);
+            var r = gl.getQueryParameter(ctxQ, gl.QUERY_RESULT);
+            gl.deleteQuery(ctxQ); ctxQ = null; return r; } }
+      ];
+
+      var ctxQ = null;
+      var results = [];
+      var i = 0;
+      function step() {
+        if (i >= strategies.length) return Promise.resolve();
+        var s = strategies[i++];
+        st('2/3 测试策略 ' + i + '/' + strategies.length + '：' + s.name);
+        return yieldUI().then(function () {
+          // 预热一次，避免首帧编译/分配混进测量
+          draw(PASSES); drain(gl);
+          gl.finish();
+          return yieldUI();
+        }).then(function () {
+          drain(gl);
+          var t0 = performance.now();
+          if (s.pre) s.pre();
+          draw(PASSES);
+          s.fn();
+          var ms = performance.now() - t0;
+          var err = gl.getError();
+          results.push({ name: s.name, ms: ms, err: err });
+          gl.finish();
+          return yieldUI().then(step);
+        });
+      }
+
+      return step().then(function () {
+        st('3/4 汇总同步策略…');
+
+        /* ---------- 实验二：实例化派发 vs 循环派发 ----------
+         * 引擎的 WebGL2 测试用 drawArraysInstanced(gl.TRIANGLES, 0, 3, n)，
+         * 也就是「同一个全屏三角形一次画 n 个实例」。而上面刚验证有效的
+         * sync.html 用的是「循环 n 次 drawArrays」。
+         * 这里用**完全相同的工作量**跑这两种派发方式，各自算出等效 GFLOPS：
+         *   · 若实例化版本报出几万 GFLOPS（远超 A15 的约 1500），说明 iOS 驱动
+         *     没有真正执行那些实例，计时自然虚高 —— 引擎就该改成循环派发。
+         *   · 若两者接近，说明派发方式不是原因，要回头查 units 的声明。
+         */
+        var FLOP_PER_ITER = 11;          // 见着色器循环体：4×(乘+加) + (乘+加+fract)
+        var N = 64;                      // 实例数 / 循环次数
+        var totalFlops = W * H * LOOP * FLOP_PER_ITER * N;
+
+        // 用实测最可靠的策略同步：blit 到 RGBA8 再 readPixels（引擎当前采用的就是它）
+        function syncBest() {
+          gl.bindFramebuffer(gl.READ_FRAMEBUFFER, target.fbo);
+          gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, sync8.fbo);
+          gl.blitFramebuffer(0, 0, 1, 1, 0, 0, 1, 1, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, sync8.fbo);
+          gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+        }
+        function prep() {
+          gl.useProgram(prog);
+          gl.uniform4f(uP, 0, 0, 0, 0);
+          gl.uniform1i(uLoop, LOOP);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+          gl.viewport(0, 0, W, H);
+          gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+          gl.bindVertexArray(vao);
+        }
+        function drawInstanced() { prep(); gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, N); gl.bindVertexArray(null); }
+        function drawLoop() {
+          prep();
+          for (var k = 0; k < N; k++) gl.drawArrays(gl.TRIANGLES, 0, 3);
+          gl.bindVertexArray(null);
+        }
+        function bench(fn, repeats) {
+          fn(); syncBest();                       // 预热
+          gl.finish();
+          var best = Infinity;
+          for (var r = 0; r < (repeats || 3); r++) {
+            drain(gl);
+            var t0 = performance.now();
+            fn();
+            syncBest();
+            var ms = performance.now() - t0;
+            if (ms < best) best = ms;
+          }
+          return best;
+        }
+
+        /* 扫描工作量，找出「耗时停止线性增长」的位置 —— 那就是同步天花板。
+         * 这是整个问题最关键的一步：如果同步每次只能可靠等到约 19ms，
+         * 那么引擎把批量目标定在 55ms 就永远测不准（等 19ms 就返回了）。 */
+        var NS = [1, 2, 4, 8, 16, 32, 64];
+        var sweep = [];
+        var scaleNote = '';
+        st('4/4 扫描工作量（找出同步天花板）…');
+        var si = 0;
+        function sweepStep() {
+          if (si >= NS.length) return Promise.resolve();
+          var n = NS[si++];
+          st('4/4 扫描 N=' + n + ' (' + si + '/' + NS.length + ')…');
+          return yieldUI().then(function () {
+            prep();
+            gl.uniform1i(uLoop, LOOP);
+            gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, n);   // 预热
+            gl.bindVertexArray(null);
+            syncBest(); gl.finish();
+            var best = Infinity;
+            for (var r = 0; r < 3; r++) {
+              drain(gl);
+              var t0 = performance.now();
+              prep();
+              gl.uniform1i(uLoop, LOOP);
+              gl.drawArraysInstanced(gl.TRIANGLES, 0, 3, n);
+              gl.bindVertexArray(null);
+              syncBest();
+              var ms = performance.now() - t0;
+              if (ms < best) best = ms;
+            }
+            sweep.push({ n: n, ms: best, gflops: (W * H * LOOP * FLOP_PER_ITER * n) / (best / 1000) / 1e9 });
+            return yieldUI().then(sweepStep);
+          });
+        }
+        return sweepStep().then(function () {
+          return { sweep: sweep };
+        }).then(function (cmp) {
+          // 线性度：相邻两点的「每实例增量耗时」
+          var slope = [];
+          for (var q = 1; q < cmp.sweep.length; q++) {
+            var dN = cmp.sweep[q].n - cmp.sweep[q - 1].n;
+            var dMs = cmp.sweep[q].ms - cmp.sweep[q - 1].ms;
+            slope.push(dMs / dN);
+          }
+          st('汇总…');
+          var base = results[0].ms;
+          var h = '<div class="card"><h2>① 同步策略</h2><table>' +
+            '<tr><th>策略</th><th>耗时 ms</th><th>相对基准</th><th>GL 错误</th></tr>';
+          results.forEach(function (r) {
+            var ratio = base > 0.01 ? (r.ms / base) : (r.ms > 5 ? 999 : 0);
+            var cls = r.ms > 5 ? 'ok' : 'bad';
+            h += '<tr><td>' + r.name + '</td>' +
+                 '<td class="' + cls + '">' + r.ms.toFixed(1) + '</td>' +
+                 '<td>' + (ratio >= 999 ? '∞' : ratio.toFixed(2) + '×') + '</td>' +
+                 '<td class="' + (r.err ? 'bad' : '') + '">' + (r.err ? '0x' + r.err.toString(16) : '无') + '</td></tr>';
+          });
+          h += '</table></div>';
+
+          var maxMs = 0, satN = 0;
+          cmp.sweep.forEach(function (p) { if (p.ms > maxMs) { maxMs = p.ms; satN = p.n; } });
+          h += '<div class="card"><h2>② 工作量扫描：找同步天花板</h2><table>' +
+            '<tr><th>实例数 N</th><th>耗时 ms</th><th>增量 ms/N</th><th>等效 GFLOPS</th><th>判定</th></tr>';
+          cmp.sweep.forEach(function (p, q) {
+            var sl = (q > 0) ? (p.ms - cmp.sweep[q - 1].ms) / (p.n - cmp.sweep[q - 1].n) : null;
+            // 每实例的真实增量应为正且大致恒定；趋近 0 说明同步已到天花板
+            var flat = (sl !== null && sl < 0.15);
+            h += '<tr><td>' + p.n + '</td><td>' + p.ms.toFixed(1) + '</td>' +
+              '<td class="' + (flat ? 'warn' : '') + '">' + (sl === null ? '—' : sl.toFixed(3)) + '</td>' +
+              '<td class="' + (p.gflops > 4000 ? 'bad' : 'ok') + '">' + p.gflops.toFixed(0) + '</td>' +
+              '<td class="' + (flat ? 'warn' : 'ok') + '">' + (sl === null ? '基准' : (flat ? '已饱和' : '线性')) + '</td></tr>';
+          });
+          h += '</table><div style="margin-top:9px;color:#8b98a9;font-size:12px">' +
+            '「增量 ms/N」应大致恒定；<b>趋近 0 的那一行起，同步就没再等到新工作</b>，' +
+            '之后的 GFLOPS 全是假的。<br>' +
+            '耗时最大值 ' + maxMs.toFixed(1) + ' ms（N=' + satN + '）。' +
+            'A15 理论约 1500 GFLOPS：N=1 时应约 ' +
+            ((W * H * LOOP * FLOP_PER_ITER) / 1500e9 * 1000).toFixed(1) + ' ms。' + scaleNote + '</div></div>';
+          out.insertAdjacentHTML('beforeend', h);
+          log.push('');
+          log.push('策略 | 耗时ms | GL错误');
+          results.forEach(function (r) {
+            log.push(r.name + ' | ' + r.ms.toFixed(1) + ' ms | ' + (r.err ? '0x' + r.err.toString(16) : '无'));
+          });
+          log.push('');
+          log.push('—— 实验二：工作量扫描（找同步天花板）——');
+          log.push('N | 耗时ms | 增量ms/N | 等效GFLOPS');
+          cmp.sweep.forEach(function (p, q) {
+            var sl = (q > 0) ? ((p.ms - cmp.sweep[q - 1].ms) / (p.n - cmp.sweep[q - 1].n)).toFixed(3) : '-';
+            log.push(p.n + ' | ' + p.ms.toFixed(1) + ' | ' + sl + ' | ' + p.gflops.toFixed(0));
+          });
+
+          var ta = document.createElement('textarea');
+          ta.value = log.join('\n');
+          var c = document.createElement('div');
+          c.className = 'card'; c.innerHTML = '<h2>完整文本</h2>';
+          c.appendChild(ta);
+          out.appendChild(c);
+          var b = document.createElement('button');
+          b.textContent = '全选并复制';
+          b.onclick = function () { ta.focus(); ta.select();
+            try { document.execCommand('copy'); b.textContent = '已复制 ✓'; } catch (e) { b.textContent = '请长按选择'; } };
+          out.appendChild(b);
+
+          statusEl.textContent = '完成';
+          window.__SYNC_DONE__ = true;
+          document.title = 'SYNC-DONE';
+          btn.textContent = '重新对比'; btn.disabled = false;
+          return null;
+        });
+      });
+    }).catch(function (e) {
+      statusEl.textContent = '失败：' + (e && e.message || e);
+      log.push('失败: ' + (e && e.message || e));
+      out.insertAdjacentHTML('beforeend', '<div class="card"><h2 class="bad">失败</h2><div>' +
+        String(e && e.message || e) + '</div></div>');
+      window.__SYNC_DONE__ = true; btn.disabled = false; btn.textContent = '重试';
+    });
+  };
+})();
+</script>
+</body>
+</html>

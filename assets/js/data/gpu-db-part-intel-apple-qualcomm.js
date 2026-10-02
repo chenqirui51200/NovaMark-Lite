@@ -1,0 +1,926 @@
+/* ============================================================================
+ * NovaMark · 参考规格数据库分片（gpu-db-part-intel-apple-qualcomm.js）
+ * ----------------------------------------------------------------------------
+ * 覆盖：Intel（独显 + 核显）、Apple（M 系列 / A 系列）、Qualcomm Adreno。
+ *
+ * 形式：经典脚本（无 import / export），不访问 DOM，不写 window.NOVA_GPU_DB，
+ *       只把本分片 push 进 window.NOVA_GPU_DB_PARTS 数组。
+ *
+ * 单位约定：
+ *   fp32Tflops / fp16Tflops : TFLOPS (10^12 FLOP/s)
+ *   bandwidthGBs            : GB/s   (10^9 字节/s，厂商标称等效带宽)
+ *   pixelRateGps / texelRateGts : 本分片全部为 null —— Intel / Apple / Qualcomm
+ *       均不公布核显与移动 SoC 的 ROP / TMU 数，独显亦无统一公开口径，绝不估算。
+ *   triangleRateGts         : 统一 null（几乎无公开数据）。
+ *   vramGB                  : 统一内存平台一律 null，容量档位写在 note。
+ *   shaderUnits             : 【本分片口径】Intel 记 EU 数（ALU = EU × 8）；
+ *                             Apple / Qualcomm 记 null（核心数见 gpuCores）。
+ *       注意：主库 gpu-db.js 的 Intel 条目记的是 ALU 数（EU × 8），合并时需换算。
+ *   gpuCores                : Apple GPU 核心数；Qualcomm 未公开 → null。
+ *
+ * 数据原则：仅收录公开规格；查不到的一律 null，绝不编造。
+ *   · Intel 核显：EU 数与频率为 Intel 公开规格；带宽按对应世代典型内存配置换算，
+ *     实际随整机内存条配置变化（note 中已说明）。
+ *   · Apple：GPU 核心数与统一内存带宽为 Apple 公开数据；M 系列 GPU 按 128 ALU/核
+ *     × 公开频率换算 FP32。A 系列（A12X～A19）的 ALU 数来自公开拆解/媒体规格表，
+ *     频率未公开者一律 null。
+ *   · Qualcomm：Adreno 的 ALU / 频率从未公开，除主库已有公开估算的旗舰档
+ *     （830 / 750 / 740 / 730）外 fp32Tflops 一律 null；带宽按 SoC 支持的内存规格换算。
+ * ==========================================================================*/
+window.NOVA_GPU_DB_PARTS = window.NOVA_GPU_DB_PARTS || [];
+window.NOVA_GPU_DB_PARTS.push({
+  source: 'intel-apple-qualcomm',
+  updated: '2026-10',
+  gpus: [
+
+    /* ==================================================================
+     * 一、Intel 桌面 / 工作站独显（Arc）
+     * ================================================================== */
+
+    { id: 'intel-arc-b580', vendor: 'Intel', name: 'Intel Arc B580', family: 'Intel Arc B (Battlemage)',
+      type: 'desktop', platform: 'desktop', year: 2024, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc B580', 'Intel Arc B580', 'Intel(R) Arc(TM) B580 Graphics', 'Intel(R) Arc(TM) B580 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) B580 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) B580 Graphics (BMG G21)', 'BMG-G21'],
+      specs: { fp32Tflops: 13.7, fp16Tflops: 13.7, bandwidthGBs: 456, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 12, memType: 'GDDR6', busWidth: 192, shaderUnits: 320, gpuCores: null, baseClockMhz: null, boostClockMhz: 2670 },
+      note: 'Battlemage BMG-G21：20 Xe2 核心 = 320 EU（2560 ALU），12GB GDDR6 192-bit（456 GB/s）。支持 XeSS 2 / XMX。' },
+
+    { id: 'intel-arc-b570', vendor: 'Intel', name: 'Intel Arc B570', family: 'Intel Arc B (Battlemage)',
+      type: 'desktop', platform: 'desktop', year: 2025, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc B570', 'Intel Arc B570', 'Intel(R) Arc(TM) B570 Graphics', 'Intel(R) Arc(TM) B570 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) B570 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) B570 Graphics (BMG G21)', 'BMG-G21'],
+      specs: { fp32Tflops: 11.5, fp16Tflops: 11.5, bandwidthGBs: 380, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 10, memType: 'GDDR6', busWidth: 160, shaderUnits: 288, gpuCores: null, baseClockMhz: null, boostClockMhz: 2500 },
+      note: 'Battlemage BMG-G21 精简版：18 Xe2 核心 = 288 EU（2304 ALU），10GB GDDR6 160-bit（380 GB/s）。' },
+
+    { id: 'intel-arc-a770-16', vendor: 'Intel', name: 'Intel Arc A770 16GB', family: 'Intel Arc A (Alchemist)',
+      type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc A770', 'Intel Arc A770', 'Intel(R) Arc(TM) A770 Graphics', 'Intel(R) Arc(TM) A770 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) A770 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) A770 Graphics (DG2)', 'DG2-512', 'ACM-G10'],
+      specs: { fp32Tflops: 17.2, fp16Tflops: 17.2, bandwidthGBs: 512, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 16, memType: 'GDDR6', busWidth: 256, shaderUnits: 512, gpuCores: null, baseClockMhz: 2100, boostClockMhz: 2100 },
+      note: 'Alchemist ACM-G10：32 Xe 核心 = 512 EU（4096 ALU），16GB GDDR6 256-bit（512 GB/s，17.5 Gbps）。另有 8GB 版本。' },
+
+    { id: 'intel-arc-a750', vendor: 'Intel', name: 'Intel Arc A750', family: 'Intel Arc A (Alchemist)',
+      type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc A750', 'Intel Arc A750', 'Intel(R) Arc(TM) A750 Graphics', 'Intel(R) Arc(TM) A750 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) A750 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) A750 Graphics (DG2)', 'DG2-512', 'ACM-G10'],
+      specs: { fp32Tflops: 14.7, fp16Tflops: 14.7, bandwidthGBs: 512, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 256, shaderUnits: 448, gpuCores: null, baseClockMhz: null, boostClockMhz: 2050 },
+      note: 'Alchemist ACM-G10：28 Xe 核心 = 448 EU（3584 ALU），8GB GDDR6 256-bit（512 GB/s）。' },
+
+    { id: 'intel-arc-a580', vendor: 'Intel', name: 'Intel Arc A580', family: 'Intel Arc A (Alchemist)',
+      type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc A580', 'Intel Arc A580', 'Intel(R) Arc(TM) A580 Graphics', 'Intel(R) Arc(TM) A580 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) A580 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) A580 Graphics (DG2)', 'ACM-G10'],
+      specs: { fp32Tflops: 10.4, fp16Tflops: 10.4, bandwidthGBs: 512, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 8, memType: 'GDDR6', busWidth: 256, shaderUnits: 384, gpuCores: null, baseClockMhz: null, boostClockMhz: 1700 },
+      note: 'Alchemist ACM-G10：24 Xe 核心 = 384 EU（3072 ALU），8GB GDDR6 256-bit（512 GB/s）。' },
+
+    { id: 'intel-arc-a380', vendor: 'Intel', name: 'Intel Arc A380', family: 'Intel Arc A (Alchemist)',
+      type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc A380', 'Intel Arc A380', 'Intel(R) Arc(TM) A380 Graphics', 'Intel(R) Arc(TM) A380 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) A380 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) A380 Graphics (DG2)', 'ACM-G11', 'DG2-128'],
+      specs: { fp32Tflops: 4.1, fp16Tflops: 4.1, bandwidthGBs: 186, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 6, memType: 'GDDR6', busWidth: 96, shaderUnits: 128, gpuCores: null, baseClockMhz: null, boostClockMhz: 2000 },
+      note: 'Alchemist ACM-G11：8 Xe 核心 = 128 EU（1024 ALU），6GB GDDR6 96-bit（186 GB/s）。另有 96 EU 的 A310。' },
+
+    { id: 'intel-arc-pro-a40', vendor: 'Intel', name: 'Intel Arc Pro A40', family: 'Intel Arc Pro (Alchemist)',
+      type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc Pro A40', 'Intel Arc Pro A40', 'Intel(R) Arc(TM) Pro A40 Graphics', 'Intel(R) Arc(TM) Pro A40 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) Pro A40 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) Pro A40 Graphics (DG2)', 'ACM-G11'],
+      specs: { fp32Tflops: 3.5, fp16Tflops: 3.5, bandwidthGBs: 192, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 6, memType: 'GDDR6', busWidth: 96, shaderUnits: 96, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '单槽 50W 工作站卡：6 Xe 核心 = 96 EU（768 ALU），6GB GDDR6 96-bit（约 192 GB/s）；fp32 取 Intel 官方标称 3.5 TFLOPS，Boost 频率未公开。' },
+
+    { id: 'intel-arc-pro-a50', vendor: 'Intel', name: 'Intel Arc Pro A50', family: 'Intel Arc Pro (Alchemist)',
+      type: 'desktop', platform: 'desktop', year: 2022, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc Pro A50', 'Intel Arc Pro A50', 'Intel(R) Arc(TM) Pro A50 Graphics', 'Intel(R) Arc(TM) Pro A50 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) Pro A50 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) Pro A50 Graphics (DG2)', 'ACM-G11'],
+      specs: { fp32Tflops: 4.8, fp16Tflops: 4.8, bandwidthGBs: 192, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 6, memType: 'GDDR6', busWidth: 96, shaderUnits: 128, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '75W 工作站卡：8 Xe 核心 = 128 EU（1024 ALU），6GB GDDR6 96-bit（约 192 GB/s）；fp32 取 Intel 官方标称 4.8 TFLOPS。' },
+
+    { id: 'intel-arc-pro-a60', vendor: 'Intel', name: 'Intel Arc Pro A60', family: 'Intel Arc Pro (Alchemist)',
+      type: 'desktop', platform: 'desktop', year: 2023, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Arc Pro A60', 'Intel Arc Pro A60', 'Intel(R) Arc(TM) Pro A60 Graphics', 'Intel(R) Arc(TM) Pro A60 Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) Pro A60 Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) Pro A60 Graphics (DG2)', 'ACM-G12'],
+      specs: { fp32Tflops: 7.0, fp16Tflops: 7.0, bandwidthGBs: 384, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 12, memType: 'GDDR6', busWidth: 192, shaderUnits: 256, gpuCores: null, baseClockMhz: null, boostClockMhz: 1700 },
+      note: '130W 工作站卡：16 Xe 核心 = 256 EU（2048 ALU，ACM-G12），12GB GDDR6 192-bit（384 GB/s）。另有移动版 A60M。' },
+
+    /* ==================================================================
+     * 二、Intel Xe 架构核显 / 移动独显（Xe-LP · Xe-LPG · Xe2）
+     * ================================================================== */
+
+    { id: 'intel-iris-xe-96eu', vendor: 'Intel', name: 'Intel Iris Xe Graphics (96EU)', family: 'Intel Xe-LP (Tiger Lake / Alder Lake)',
+      type: 'integrated', platform: 'laptop', year: 2020, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Xe Graphics', 'Intel Iris Xe Graphics', 'Intel(R) Iris(R) Xe Graphics', 'Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Xe Graphics (TGL GT2)', 'Tiger Lake', 'TGL GT2'],
+      specs: { fp32Tflops: 2.15, fp16Tflops: 2.15, bandwidthGBs: 68, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: 96, gpuCores: null, baseClockMhz: null, boostClockMhz: 1400 },
+      note: 'Xe-LP 核显 96 EU（768 ALU）；统一内存，共享 LPDDR4X-4266 双通道约 68 GB/s（DDR4-3200 机型约 51.2 GB/s）。Core i7-1165G7 / 1185G7 等。' },
+
+    { id: 'intel-iris-xe-80eu', vendor: 'Intel', name: 'Intel Iris Xe Graphics (80EU)', family: 'Intel Xe-LP (Tiger Lake / Alder Lake)',
+      type: 'integrated', platform: 'laptop', year: 2020, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Xe Graphics 80EU', 'Intel Iris Xe Graphics 80EU', 'Intel(R) Iris(R) Xe Graphics (80EU)', 'Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Xe Graphics (TGL GT2)', 'TGL GT2'],
+      specs: { fp32Tflops: 1.79, fp16Tflops: 1.79, bandwidthGBs: 68, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: 80, gpuCores: null, baseClockMhz: null, boostClockMhz: 1400 },
+      note: 'Xe-LP 核显 80 EU（640 ALU）；统一内存，共享 LPDDR4X-4266 约 68 GB/s。Windows 渲染器字符串与 96EU 版本相同，需靠核心数/型号区分。' },
+
+    { id: 'intel-iris-xe-48eu', vendor: 'Intel', name: 'Intel Iris Xe Graphics (48EU)', family: 'Intel Xe-LP (Tiger Lake / Alder Lake)',
+      type: 'integrated', platform: 'laptop', year: 2020, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Xe Graphics 48EU', 'Intel Iris Xe Graphics 48EU', 'Intel(R) Iris(R) Xe Graphics (48EU)', 'Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics (TGL GT1)', 'TGL GT1'],
+      specs: { fp32Tflops: 0.84, fp16Tflops: 0.84, bandwidthGBs: 68, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: 48, gpuCores: null, baseClockMhz: null, boostClockMhz: 1100 },
+      note: 'Xe-LP 低配 48 EU（384 ALU），Tiger Lake-U / Alder Lake-U 入门型号；统一内存共享 LPDDR4X-4266 约 68 GB/s。' },
+
+    { id: 'intel-iris-xe-max', vendor: 'Intel', name: 'Intel Iris Xe MAX Graphics', family: 'Intel Xe-LP (DG1)',
+      type: 'laptop', platform: 'laptop', year: 2021, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: false,
+      aliases: ['Iris Xe MAX', 'Intel Iris Xe MAX', 'Intel(R) Iris(R) Xe MAX Graphics', 'Intel(R) Iris(R) Xe MAX Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Xe MAX Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Xe MAX Graphics (DG1)', 'DG1', 'Deep Link'],
+      specs: { fp32Tflops: 2.5, fp16Tflops: 2.5, bandwidthGBs: 68, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: 4, memType: 'LPDDR4X', busWidth: 128, shaderUnits: 96, gpuCores: null, baseClockMhz: null, boostClockMhz: 1650 },
+      note: '入门级移动独显（DG1）：96 EU（768 ALU），自带 4GB LPDDR4X 128-bit（68 GB/s）；支持 Deep Link 与核显协同。' },
+
+    { id: 'intel-arc-graphics-meteor-lake', vendor: 'Intel', name: 'Intel Arc Graphics (Meteor Lake)', family: 'Intel Arc Graphics (Meteor Lake, Xe-LPG)',
+      type: 'integrated', platform: 'laptop', year: 2023, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Intel Arc Graphics', 'Arc Graphics', 'Intel(R) Arc(TM) Graphics', 'Intel(R) Arc(TM) Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) Graphics (MTL)', 'Xe-LPG', 'Meteor Lake'],
+      specs: { fp32Tflops: 4.5, fp16Tflops: 4.5, bandwidthGBs: 120, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: 128, gpuCores: null, baseClockMhz: null, boostClockMhz: 2200 },
+      note: 'Xe-LPG 核显，最高 8 Xe 核心 = 128 EU（1024 ALU）；统一内存共享 LPDDR5X-7467 约 120 GB/s（DDR5-5600 约 89.6 GB/s）。Core Ultra 100H 系列。' },
+
+    { id: 'intel-arc-130v', vendor: 'Intel', name: 'Intel Arc 130V', family: 'Intel Arc Graphics (Lunar Lake, Xe2)',
+      type: 'integrated', platform: 'laptop', year: 2024, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Arc 130V', 'Intel Arc 130V', 'Intel(R) Arc(TM) 130V GPU', 'Intel(R) Arc(TM) 130V GPU Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) 130V GPU Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) 130V GPU (LNL)', 'Xe2-LPG', 'Lunar Lake'],
+      specs: { fp32Tflops: 3.3, fp16Tflops: 3.3, bandwidthGBs: 136, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: 112, gpuCores: null, baseClockMhz: null, boostClockMhz: 1850 },
+      note: 'Xe2 核显：7 Xe2 核心 = 112 EU（896 ALU）；统一内存共享 LPDDR5X-8533 约 136 GB/s。Core Ultra 200V 系列（如 226V/228V）。' },
+
+    { id: 'intel-arc-140v', vendor: 'Intel', name: 'Intel Arc 140V', family: 'Intel Arc Graphics (Lunar Lake, Xe2)',
+      type: 'integrated', platform: 'laptop', year: 2024, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Arc 140V', 'Intel Arc 140V', 'Intel(R) Arc(TM) 140V GPU', 'Intel(R) Arc(TM) 140V GPU Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) 140V GPU Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) 140V GPU (LNL)', 'Intel Arc Graphics 140V', 'Xe2-LPG'],
+      specs: { fp32Tflops: 4.1, fp16Tflops: 4.1, bandwidthGBs: 136, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: 128, gpuCores: null, baseClockMhz: null, boostClockMhz: 2000 },
+      note: 'Xe2 核显：8 Xe2 核心 = 128 EU（1024 ALU）；统一内存共享 LPDDR5X-8533 约 136 GB/s。Core Ultra 200V 高配（258V/268V）。' },
+
+    { id: 'intel-arc-130t', vendor: 'Intel', name: 'Intel Arc 130T', family: 'Intel Arc Graphics (Arrow Lake-H, Xe-LPG+)',
+      type: 'integrated', platform: 'laptop', year: 2025, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Arc 130T', 'Intel Arc 130T', 'Intel(R) Arc(TM) 130T GPU', 'Intel(R) Arc(TM) 130T GPU Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) 130T GPU Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) 130T GPU (ARL)', 'Arrow Lake-H'],
+      specs: { fp32Tflops: 3.9, fp16Tflops: 3.9, bandwidthGBs: 136, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: 112, gpuCores: null, baseClockMhz: null, boostClockMhz: 2200 },
+      note: 'Arrow Lake-H 核显：7 Xe 核心（Xe-LPG+）= 112 EU（896 ALU）；统一内存共享 LPDDR5X-8533 约 136 GB/s。Core Ultra 5 225H 等。' },
+
+    { id: 'intel-arc-140t', vendor: 'Intel', name: 'Intel Arc 140T', family: 'Intel Arc Graphics (Arrow Lake-H, Xe-LPG+)',
+      type: 'integrated', platform: 'laptop', year: 2025, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Arc 140T', 'Intel Arc 140T', 'Intel(R) Arc(TM) 140T GPU', 'Intel(R) Arc(TM) 140T GPU Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Arc(TM) 140T GPU Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Arc(tm) 140T GPU (ARL)', 'Arrow Lake-H'],
+      specs: { fp32Tflops: 4.6, fp16Tflops: 4.6, bandwidthGBs: 136, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: 128, gpuCores: null, baseClockMhz: null, boostClockMhz: 2250 },
+      note: 'Arrow Lake-H 核显：8 Xe 核心（Xe-LPG+）= 128 EU（1024 ALU）；统一内存共享 LPDDR5X-8533 约 136 GB/s。Core Ultra 9 285H / 7 255H。' },
+
+    { id: 'intel-graphics-arrow-lake-s', vendor: 'Intel', name: 'Intel Graphics (Arrow Lake-S, 4 Xe)', family: 'Intel Graphics (Arrow Lake-S, Xe-LPG)',
+      type: 'integrated', platform: 'desktop', year: 2024, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Intel Graphics', 'Intel(R) Graphics', 'Intel(R) Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Graphics (ARL)', 'Arrow Lake-S', 'ARL-S'],
+      specs: { fp32Tflops: 2.0, fp16Tflops: 2.0, bandwidthGBs: 89.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR5', busWidth: 128, shaderUnits: 64, gpuCores: null, baseClockMhz: null, boostClockMhz: 2000 },
+      note: 'Arrow Lake-S 桌面核显：4 Xe 核心 = 64 EU（512 ALU）；统一内存共享 DDR5-5600 双通道约 89.6 GB/s。Core Ultra 200S 系列。' },
+
+    /* ==================================================================
+     * 三、Intel 老架构核显（Gen9.5 / Gen9 / Gen8 / Gen7.5 / Gen7）
+     * ================================================================== */
+
+    { id: 'intel-uhd-770', vendor: 'Intel', name: 'Intel UHD Graphics 770', family: 'Intel Gen12 Xe-LP (Alder Lake-S)',
+      type: 'integrated', platform: 'desktop', year: 2021, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['UHD Graphics 770', 'Intel UHD Graphics 770', 'Intel(R) UHD Graphics 770', 'Intel(R) UHD Graphics 770 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics 770 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics 770 (ADL-S GT1)', 'ADL-S GT1'],
+      specs: { fp32Tflops: 0.79, fp16Tflops: 0.79, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 32, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1550 },
+      note: 'Xe-LP 32 EU（256 ALU，4 Xe 核心）；统一内存共享 DDR4-3200 双通道约 51.2 GB/s（DDR5-4800 约 76.8 GB/s）。Core i9/i7-12/13/14 代 K 系列。' },
+
+    { id: 'intel-uhd-750', vendor: 'Intel', name: 'Intel UHD Graphics 750', family: 'Intel Gen12 Xe-LP (Rocket Lake-S)',
+      type: 'integrated', platform: 'desktop', year: 2021, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['UHD Graphics 750', 'Intel UHD Graphics 750', 'Intel(R) UHD Graphics 750', 'Intel(R) UHD Graphics 750 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics 750 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics 750 (RKL GT1)', 'RKL GT1'],
+      specs: { fp32Tflops: 0.67, fp16Tflops: 0.67, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 32, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1300 },
+      note: 'Xe-LP 32 EU（256 ALU）；统一内存共享 DDR4-3200 双通道约 51.2 GB/s。Core i9/i7/i5-11 代桌面。' },
+
+    { id: 'intel-uhd-730', vendor: 'Intel', name: 'Intel UHD Graphics 730', family: 'Intel Gen12 Xe-LP (Alder Lake-S)',
+      type: 'integrated', platform: 'desktop', year: 2022, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['UHD Graphics 730', 'Intel UHD Graphics 730', 'Intel(R) UHD Graphics 730', 'Intel(R) UHD Graphics 730 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics 730 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics 730 (ADL-S GT1)', 'ADL-S GT1'],
+      specs: { fp32Tflops: 0.6, fp16Tflops: 0.6, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1550 },
+      note: 'Xe-LP 24 EU（192 ALU）；统一内存共享 DDR4-3200 双通道约 51.2 GB/s。Core i5/i3-12/13/14 代非 K 系列。' },
+
+    { id: 'intel-uhd-630', vendor: 'Intel', name: 'Intel UHD Graphics 630', family: 'Intel Gen9.5 (Coffee Lake / Comet Lake)',
+      type: 'integrated', platform: 'desktop', year: 2017, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['UHD Graphics 630', 'Intel UHD Graphics 630', 'Intel(R) UHD Graphics 630', 'Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics 630 (CFL GT2)', 'Coffee Lake', 'CFL GT2'],
+      specs: { fp32Tflops: 0.44, fp16Tflops: 0.44, bandwidthGBs: 41.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1150 },
+      note: 'Gen9.5 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2666 双通道约 41.6 GB/s。8/9/10 代桌面与标压移动。' },
+
+    { id: 'intel-uhd-620', vendor: 'Intel', name: 'Intel UHD Graphics 620', family: 'Intel Gen9.5 (Kaby Lake-R / Whiskey Lake / Comet Lake-U)',
+      type: 'integrated', platform: 'laptop', year: 2017, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['UHD Graphics 620', 'Intel UHD Graphics 620', 'Intel(R) UHD Graphics 620', 'Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics 620 (KBL GT2)', 'Kaby Lake-R', 'KBL GT2', 'WHL GT2'],
+      specs: { fp32Tflops: 0.44, fp16Tflops: 0.44, bandwidthGBs: 38.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1150 },
+      note: 'Gen9.5 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2400 双通道约 38.4 GB/s，低配机型为单通道（约 19.2 GB/s）。8 代 U 系列最常见。' },
+
+    { id: 'intel-uhd-610', vendor: 'Intel', name: 'Intel UHD Graphics 610', family: 'Intel Gen9.5 (Coffee Lake / Comet Lake)',
+      type: 'integrated', platform: 'desktop', year: 2017, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['UHD Graphics 610', 'Intel UHD Graphics 610', 'Intel(R) UHD Graphics 610', 'Intel(R) UHD Graphics 610 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics 610 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics 610 (CFL GT1)', 'CFL GT1'],
+      specs: { fp32Tflops: 0.2, fp16Tflops: 0.2, bandwidthGBs: 38.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 12, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1050 },
+      note: 'Gen9.5 GT1，12 EU（96 ALU）；统一内存共享 DDR4-2400 双通道约 38.4 GB/s。Pentium / Celeron 与部分 i3。' },
+
+    { id: 'intel-uhd-617', vendor: 'Intel', name: 'Intel UHD Graphics 617', family: 'Intel Gen9.5 (Amber Lake-Y)',
+      type: 'integrated', platform: 'laptop', year: 2018, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['UHD Graphics 617', 'Intel UHD Graphics 617', 'Intel(R) UHD Graphics 617', 'Intel(R) UHD Graphics 617 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics 617 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics 617 (AML-Y)', 'Amber Lake'],
+      specs: { fp32Tflops: 0.44, fp16Tflops: 0.44, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR3', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1150 },
+      note: 'Gen9.5 GT2，24 EU（192 ALU）；统一内存共享 LPDDR3-2133 双通道约 34.1 GB/s。MacBook Air 2018 亦使用。' },
+
+    { id: 'intel-uhd-graphics-jasper-lake', vendor: 'Intel', name: 'Intel UHD Graphics (Jasper Lake)', family: 'Intel Gen11 (Jasper Lake)',
+      type: 'integrated', platform: 'laptop', year: 2021, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Intel UHD Graphics', 'Intel(R) UHD Graphics', 'Intel UHD Graphics (Jasper Lake)', 'Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics (JSL)', 'Jasper Lake', 'JSL'],
+      specs: { fp32Tflops: 0.41, fp16Tflops: 0.41, bandwidthGBs: 46.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 32, gpuCores: null, baseClockMhz: null, boostClockMhz: 800 },
+      note: 'Gen11 32 EU（256 ALU）；统一内存共享 DDR4-2933 双通道约 46.9 GB/s（LPDDR4X-3733 约 59.7 GB/s）。赛扬 N4500 / 奔腾 N6000 等。' },
+
+    { id: 'intel-hd-630', vendor: 'Intel', name: 'Intel HD Graphics 630', family: 'Intel Gen9.5 (Kaby Lake)',
+      type: 'integrated', platform: 'desktop', year: 2017, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 630', 'Intel HD Graphics 630', 'Intel(R) HD Graphics 630', 'Intel(R) HD Graphics 630 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 630 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 630 (KBL GT2)', 'Kaby Lake', 'KBL GT2'],
+      specs: { fp32Tflops: 0.44, fp16Tflops: 0.44, bandwidthGBs: 38.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1150 },
+      note: 'Gen9.5 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2400 双通道约 38.4 GB/s（DDR3L-1600 约 25.6 GB/s）。7 代桌面 / 标压移动。' },
+
+    { id: 'intel-hd-620', vendor: 'Intel', name: 'Intel HD Graphics 620', family: 'Intel Gen9.5 (Kaby Lake-U)',
+      type: 'integrated', platform: 'laptop', year: 2016, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 620', 'Intel HD Graphics 620', 'Intel(R) HD Graphics 620', 'Intel(R) HD Graphics 620 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 620 (KBL GT2)', 'KBL GT2'],
+      specs: { fp32Tflops: 0.4, fp16Tflops: 0.4, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1050 },
+      note: 'Gen9.5 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2133 双通道约 34.1 GB/s，低配机型为单通道。7 代 U 系列。' },
+
+    { id: 'intel-hd-615', vendor: 'Intel', name: 'Intel HD Graphics 615', family: 'Intel Gen9.5 (Kaby Lake-Y)',
+      type: 'integrated', platform: 'laptop', year: 2016, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 615', 'Intel HD Graphics 615', 'Intel(R) HD Graphics 615', 'Intel(R) HD Graphics 615 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 615 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 615 (KBL GT2)', 'KBL GT2'],
+      specs: { fp32Tflops: 0.35, fp16Tflops: 0.35, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR3', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 900 },
+      note: 'Gen9.5 GT2，24 EU（192 ALU）；统一内存共享 LPDDR3-1866 双通道约 29.9 GB/s。Core m3-7Y30 / i5-7Y54，MacBook 12 与 Surface Pro。' },
+
+    { id: 'intel-hd-530', vendor: 'Intel', name: 'Intel HD Graphics 530', family: 'Intel Gen9 (Skylake)',
+      type: 'integrated', platform: 'desktop', year: 2015, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 530', 'Intel HD Graphics 530', 'Intel(R) HD Graphics 530', 'Intel(R) HD Graphics 530 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 530 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 530 (SKL GT2)', 'Skylake', 'SKL GT2'],
+      specs: { fp32Tflops: 0.44, fp16Tflops: 0.44, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1150 },
+      note: 'Gen9 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2133 双通道约 34.1 GB/s（另有 DDR3L 版本）。6 代桌面 / 标压移动。' },
+
+    { id: 'intel-hd-520', vendor: 'Intel', name: 'Intel HD Graphics 520', family: 'Intel Gen9 (Skylake-U)',
+      type: 'integrated', platform: 'laptop', year: 2015, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 520', 'Intel HD Graphics 520', 'Intel(R) HD Graphics 520', 'Intel(R) HD Graphics 520 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 520 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 520 (SKL GT2)', 'SKL GT2'],
+      specs: { fp32Tflops: 0.4, fp16Tflops: 0.4, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1050 },
+      note: 'Gen9 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2133 双通道约 34.1 GB/s（LPDDR3-1866 约 29.9 GB/s）。6 代 U 系列。' },
+
+    { id: 'intel-hd-510', vendor: 'Intel', name: 'Intel HD Graphics 510', family: 'Intel Gen9 (Skylake)',
+      type: 'integrated', platform: 'desktop', year: 2015, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 510', 'Intel HD Graphics 510', 'Intel(R) HD Graphics 510', 'Intel(R) HD Graphics 510 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 510 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 510 (SKL GT1)', 'SKL GT1'],
+      specs: { fp32Tflops: 0.2, fp16Tflops: 0.2, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 12, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1050 },
+      note: 'Gen9 GT1，12 EU（96 ALU）；统一内存共享 DDR4-2133 双通道约 34.1 GB/s。6 代奔腾 / 赛扬。' },
+
+    { id: 'intel-hd-5500', vendor: 'Intel', name: 'Intel HD Graphics 5500', family: 'Intel Gen8 (Broadwell-U)',
+      type: 'integrated', platform: 'laptop', year: 2014, api: 'd3d11',
+      apis: ['d3d11', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 5500', 'Intel HD Graphics 5500', 'Intel(R) HD Graphics 5500', 'Intel(R) HD Graphics 5500 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 5500 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 5500 (BDW GT2)', 'Broadwell', 'BDW GT2'],
+      specs: { fp32Tflops: 0.38, fp16Tflops: 0.38, bandwidthGBs: 25.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR3L', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1000 },
+      note: 'Gen8 GT2，24 EU（192 ALU）；统一内存共享 DDR3L-1600 双通道约 25.6 GB/s（LPDDR3-1866 约 29.9 GB/s）。5 代 U 系列最常见核显。' },
+
+    { id: 'intel-hd-4600', vendor: 'Intel', name: 'Intel HD Graphics 4600', family: 'Intel Gen7.5 (Haswell)',
+      type: 'integrated', platform: 'desktop', year: 2013, api: 'd3d11',
+      apis: ['d3d11', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 4600', 'Intel HD Graphics 4600', 'Intel(R) HD Graphics 4600', 'Intel(R) HD Graphics 4600 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 4600 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 4600 (HSW GT2)', 'Haswell', 'HSW GT2'],
+      specs: { fp32Tflops: 0.37, fp16Tflops: 0.37, bandwidthGBs: 25.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR3', busWidth: 128, shaderUnits: 20, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1150 },
+      note: 'Gen7.5 GT2，20 EU（160 ALU）；统一内存共享 DDR3-1600 双通道约 25.6 GB/s。4 代桌面 / 标压移动。' },
+
+    { id: 'intel-hd-4400', vendor: 'Intel', name: 'Intel HD Graphics 4400', family: 'Intel Gen7.5 (Haswell)',
+      type: 'integrated', platform: 'desktop', year: 2013, api: 'd3d11',
+      apis: ['d3d11', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 4400', 'Intel HD Graphics 4400', 'Intel(R) HD Graphics 4400', 'Intel(R) HD Graphics 4400 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 4400 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 4400 (HSW GT2)', 'HSW GT2'],
+      specs: { fp32Tflops: 0.35, fp16Tflops: 0.35, bandwidthGBs: 25.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR3', busWidth: 128, shaderUnits: 20, gpuCores: null, baseClockMhz: 200, boostClockMhz: 1100 },
+      note: 'Gen7.5 GT2，20 EU（160 ALU）；统一内存共享 DDR3-1600 双通道约 25.6 GB/s。4 代 i3 / 低功耗移动。' },
+
+    { id: 'intel-hd-4000', vendor: 'Intel', name: 'Intel HD Graphics 4000', family: 'Intel Gen7 (Ivy Bridge)',
+      type: 'integrated', platform: 'desktop', year: 2012, api: 'd3d11',
+      apis: ['d3d11', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 4000', 'Intel HD Graphics 4000', 'Intel(R) HD Graphics 4000', 'Intel(R) HD Graphics 4000 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 4000 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 4000 (IVB GT2)', 'Ivy Bridge', 'IVB GT2'],
+      specs: { fp32Tflops: 0.27, fp16Tflops: 0.27, bandwidthGBs: 25.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR3', busWidth: 128, shaderUnits: 16, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1050 },
+      note: 'Gen7 GT2，16 EU（128 ALU）；统一内存共享 DDR3-1600 双通道约 25.6 GB/s（频率随 SKU 1050–1150 MHz）。3 代酷睿。' },
+
+    { id: 'intel-hd-5000', vendor: 'Intel', name: 'Intel HD Graphics 5000', family: 'Intel Gen7.5 (Haswell GT3)',
+      type: 'integrated', platform: 'laptop', year: 2013, api: 'd3d11',
+      apis: ['d3d11', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['HD Graphics 5000', 'Intel HD Graphics 5000', 'Intel(R) HD Graphics 5000', 'Intel(R) HD Graphics 5000 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 5000 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 5000 (HSW GT3)', 'HSW GT3'],
+      specs: { fp32Tflops: 0.7, fp16Tflops: 0.7, bandwidthGBs: 25.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR3', busWidth: 128, shaderUnits: 40, gpuCores: null, baseClockMhz: 200, boostClockMhz: 1100 },
+      note: 'Gen7.5 GT3，40 EU（320 ALU）；统一内存共享 DDR3L-1600 双通道约 25.6 GB/s。MacBook Air 2013 / 部分低功耗 SKU。' },
+
+    { id: 'intel-iris-plus-655', vendor: 'Intel', name: 'Intel Iris Plus Graphics 655', family: 'Intel Gen9.5 (Coffee Lake-U GT3e)',
+      type: 'integrated', platform: 'laptop', year: 2018, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Plus Graphics 655', 'Intel Iris Plus Graphics 655', 'Intel(R) Iris(R) Plus Graphics 655', 'Intel(R) Iris(R) Plus Graphics 655 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Plus Graphics 655 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Plus Graphics 655 (CFL GT3)', 'CFL GT3'],
+      specs: { fp32Tflops: 0.81, fp16Tflops: 0.81, bandwidthGBs: 38.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 48, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1050 },
+      note: 'Gen9.5 GT3e，48 EU（384 ALU）+ 128MB eDRAM；统一内存共享 DDR4-2400 双通道约 38.4 GB/s。Core i7-8559U，MacBook Pro 13 2018/2019。' },
+
+    { id: 'intel-iris-plus-650', vendor: 'Intel', name: 'Intel Iris Plus Graphics 650', family: 'Intel Gen9.5 (Kaby Lake-U GT3e)',
+      type: 'integrated', platform: 'laptop', year: 2017, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Plus Graphics 650', 'Intel Iris Plus Graphics 650', 'Intel(R) Iris(R) Plus Graphics 650', 'Intel(R) Iris(R) Plus Graphics 650 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Plus Graphics 650 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Plus Graphics 650 (KBL GT3)', 'KBL GT3'],
+      specs: { fp32Tflops: 0.77, fp16Tflops: 0.77, bandwidthGBs: 38.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 48, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1000 },
+      note: 'Gen9.5 GT3e，48 EU（384 ALU）+ 64MB eDRAM；统一内存共享 DDR4-2400 双通道约 38.4 GB/s。Core i7-7567U，MacBook Pro 13 2017。' },
+
+    { id: 'intel-iris-plus-640', vendor: 'Intel', name: 'Intel Iris Plus Graphics 640', family: 'Intel Gen9.5 (Kaby Lake-U GT3e)',
+      type: 'integrated', platform: 'laptop', year: 2016, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Plus Graphics 640', 'Intel Iris Plus Graphics 640', 'Intel(R) Iris(R) Plus Graphics 640', 'Intel(R) Iris(R) Plus Graphics 640 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Plus Graphics 640 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Plus Graphics 640 (KBL GT3)', 'KBL GT3'],
+      specs: { fp32Tflops: 0.81, fp16Tflops: 0.81, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 48, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1050 },
+      note: 'Gen9.5 GT3e，48 EU（384 ALU）+ 64MB eDRAM；统一内存共享 DDR4-2133 双通道约 34.1 GB/s。Core i5-7260U / i7-7660U。' },
+
+    { id: 'intel-iris-6100', vendor: 'Intel', name: 'Intel Iris Graphics 6100', family: 'Intel Gen8 (Broadwell-U GT3)',
+      type: 'integrated', platform: 'laptop', year: 2014, api: 'd3d11',
+      apis: ['d3d11', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Graphics 6100', 'Intel Iris Graphics 6100', 'Intel(R) Iris(TM) Graphics 6100', 'Intel(R) Iris(TM) Graphics 6100 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(TM) Graphics 6100 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(TM) Graphics 6100 (BDW GT3)', 'Broadwell GT3'],
+      specs: { fp32Tflops: 0.77, fp16Tflops: 0.77, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR3', busWidth: 128, shaderUnits: 48, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1000 },
+      note: 'Gen8 GT3，48 EU（384 ALU）；统一内存共享 LPDDR3-1866 约 29.9 GB/s（DDR3L-1600 约 25.6 GB/s）。MacBook Pro 13 2015 早期版。' },
+
+    { id: 'intel-iris-pro-580', vendor: 'Intel', name: 'Intel Iris Pro Graphics 580', family: 'Intel Gen9 (Skylake GT4e)',
+      type: 'integrated', platform: 'laptop', year: 2016, api: 'd3d12',
+      apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Pro Graphics 580', 'Intel Iris Pro Graphics 580', 'Intel(R) Iris(R) Pro Graphics 580', 'Intel(R) Iris(R) Pro Graphics 580 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Pro Graphics 580 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Pro Graphics 580 (SKL GT4)', 'SKL GT4e'],
+      specs: { fp32Tflops: 1.15, fp16Tflops: 1.15, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 72, gpuCores: null, baseClockMhz: 350, boostClockMhz: 1000 },
+      note: 'Gen9 GT4e，72 EU（576 ALU）+ 128MB eDRAM；统一内存共享 DDR4-2133 双通道约 34.1 GB/s。Skylake-H 顶配（如 i7-6770HQ）。' },
+
+    { id: 'intel-iris-pro-6200', vendor: 'Intel', name: 'Intel Iris Pro Graphics 6200', family: 'Intel Gen8 (Broadwell GT3e)',
+      type: 'integrated', platform: 'desktop', year: 2014, api: 'd3d11',
+      apis: ['d3d11', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
+      aliases: ['Iris Pro Graphics 6200', 'Intel Iris Pro Graphics 6200', 'Intel(R) Iris(R) Pro Graphics 6200', 'Intel(R) Iris(R) Pro Graphics 6200 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) Iris(R) Pro Graphics 6200 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) Iris(R) Pro Graphics 6200 (BDW GT3)', 'BDW GT3e'],
+      specs: { fp32Tflops: 0.81, fp16Tflops: 0.81, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR3L', busWidth: 128, shaderUnits: 48, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1050 },
+      note: 'Gen8 GT3e，48 EU（384 ALU）+ 128MB eDRAM；统一内存共享 DDR3L-1866 约 29.9 GB/s。Broadwell-H / 桌面 BGA 型号。' },
+
+    /* ==================================================================
+     * 四、Apple Silicon M 系列（统一内存；GPU 按核心数拆条）
+     *   FP32 = GPU 核心数 × 128 ALU × 2 × 频率；内存带宽为 Apple 公开数据。
+     * ================================================================== */
+
+    { id: 'apple-m1-7', vendor: 'Apple', name: 'Apple M1 (7 核 GPU)', family: 'Apple M1',
+      type: 'apple-soc', platform: 'laptop', year: 2020, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple M1', 'Apple M1 GPU', 'Apple GPU', 'Apple GPU (Apple M1)', 'Apple M1 7-Core GPU', 'Apple M1 7 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)', 'Apple GPU (Apple M1 7-core)'],
+      specs: { fp32Tflops: 2.3, fp16Tflops: 2.3, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: null, gpuCores: 7, baseClockMhz: null, boostClockMhz: 1278 },
+      note: '统一内存 8GB / 16GB 档，LPDDR4X-4266 128-bit（68.3 GB/s）。7 核 GPU（896 ALU）为 MacBook Air 入门配置，Safari 渲染器字符串只报 Apple GPU。' },
+
+    { id: 'apple-m1-8', vendor: 'Apple', name: 'Apple M1 (8 核 GPU)', family: 'Apple M1',
+      type: 'apple-soc', platform: 'laptop', year: 2020, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple M1', 'M1', 'Apple M1 GPU', 'Apple GPU', 'Apple GPU (Apple M1)', 'Apple M1 8-Core GPU', 'Apple M1 8 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)'],
+      specs: { fp32Tflops: 2.6, fp16Tflops: 2.6, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: null, gpuCores: 8, baseClockMhz: null, boostClockMhz: 1278 },
+      note: '统一内存 8GB / 16GB 档，LPDDR4X-4266 128-bit（68.3 GB/s）。8 核 GPU（1024 ALU）；MacBook Air / Pro 13 / Mac mini / iMac 24 / iPad Pro 11·12.9(2021)。' },
+
+    { id: 'apple-m1-pro-14', vendor: 'Apple', name: 'Apple M1 Pro (14 核 GPU)', family: 'Apple M1 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2021, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M1 Pro', 'M1 Pro', 'Apple M1 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M1 Pro)', 'Apple M1 Pro 14-Core GPU', 'Apple M1 Pro 14 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 4.6, fp16Tflops: 4.6, bandwidthGBs: 204.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 256, shaderUnits: null, gpuCores: 14, baseClockMhz: null, boostClockMhz: 1296 },
+      note: '统一内存 16GB / 32GB 档，LPDDR5-6400 256-bit（204.8 GB/s）。14 核 GPU（1792 ALU），MacBook Pro 14/16 入门配置。' },
+
+    { id: 'apple-m1-pro-16', vendor: 'Apple', name: 'Apple M1 Pro (16 核 GPU)', family: 'Apple M1 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2021, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M1 Pro', 'M1 Pro', 'Apple M1 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M1 Pro)', 'Apple M1 Pro 16-Core GPU', 'Apple M1 Pro 16 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 5.3, fp16Tflops: 5.3, bandwidthGBs: 204.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 256, shaderUnits: null, gpuCores: 16, baseClockMhz: null, boostClockMhz: 1296 },
+      note: '统一内存 16GB / 32GB 档，LPDDR5-6400 256-bit（204.8 GB/s）。16 核 GPU（2048 ALU）。' },
+
+    { id: 'apple-m1-max-24', vendor: 'Apple', name: 'Apple M1 Max (24 核 GPU)', family: 'Apple M1 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2021, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M1 Max', 'M1 Max', 'Apple M1 Max GPU', 'Apple GPU', 'Apple GPU (Apple M1 Max)', 'Apple M1 Max 24-Core GPU', 'Apple M1 Max 24 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 8.0, fp16Tflops: 8.0, bandwidthGBs: 409.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 512, shaderUnits: null, gpuCores: 24, baseClockMhz: null, boostClockMhz: 1296 },
+      note: '统一内存 32GB / 64GB 档，LPDDR5-6400 512-bit（409.6 GB/s）。24 核 GPU（3072 ALU），MacBook Pro 14/16 中配。' },
+
+    { id: 'apple-m1-max-32', vendor: 'Apple', name: 'Apple M1 Max (32 核 GPU)', family: 'Apple M1 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2021, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M1 Max', 'M1 Max', 'Apple M1 Max GPU', 'Apple GPU', 'Apple GPU (Apple M1 Max)', 'Apple M1 Max 32-Core GPU', 'Apple M1 Max 32 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 10.6, fp16Tflops: 10.6, bandwidthGBs: 409.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 512, shaderUnits: null, gpuCores: 32, baseClockMhz: null, boostClockMhz: 1296 },
+      note: '统一内存 32GB / 64GB 档，LPDDR5-6400 512-bit（409.6 GB/s）。32 核 GPU（4096 ALU）。' },
+
+    { id: 'apple-m1-ultra-48', vendor: 'Apple', name: 'Apple M1 Ultra (48 核 GPU)', family: 'Apple M1 Ultra',
+      type: 'apple-soc', platform: 'desktop', year: 2022, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M1 Ultra', 'M1 Ultra', 'Apple M1 Ultra GPU', 'Apple GPU', 'Apple GPU (Apple M1 Ultra)', 'Apple M1 Ultra 48-Core GPU', 'Apple M1 Ultra 48 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Ultra, Unspecified Version)'],
+      specs: { fp32Tflops: 15.9, fp16Tflops: 15.9, bandwidthGBs: 819.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 1024, shaderUnits: null, gpuCores: 48, baseClockMhz: null, boostClockMhz: 1296 },
+      note: '统一内存 64GB / 128GB 档，LPDDR5-6400 1024-bit（819.2 GB/s）。48 核 GPU（6144 ALU），Mac Studio 入门。' },
+
+    { id: 'apple-m1-ultra-64', vendor: 'Apple', name: 'Apple M1 Ultra (64 核 GPU)', family: 'Apple M1 Ultra',
+      type: 'apple-soc', platform: 'desktop', year: 2022, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M1 Ultra', 'M1 Ultra', 'Apple M1 Ultra GPU', 'Apple GPU', 'Apple GPU (Apple M1 Ultra)', 'Apple M1 Ultra 64-Core GPU', 'Apple M1 Ultra 64 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Ultra, Unspecified Version)'],
+      specs: { fp32Tflops: 21.2, fp16Tflops: 21.2, bandwidthGBs: 819.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 1024, shaderUnits: null, gpuCores: 64, baseClockMhz: null, boostClockMhz: 1296 },
+      note: '统一内存 64GB / 128GB 档，LPDDR5-6400 1024-bit（819.2 GB/s）。64 核 GPU（8192 ALU），双 M1 Max 通过 UltraFusion 互联。' },
+
+    { id: 'apple-m2-8', vendor: 'Apple', name: 'Apple M2 (8 核 GPU)', family: 'Apple M2',
+      type: 'apple-soc', platform: 'laptop', year: 2022, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple M2', 'M2', 'Apple M2 GPU', 'Apple GPU', 'Apple GPU (Apple M2)', 'Apple M2 8-Core GPU', 'Apple M2 8 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)'],
+      specs: { fp32Tflops: 2.9, fp16Tflops: 2.9, bandwidthGBs: 102.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 128, shaderUnits: null, gpuCores: 8, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 8GB / 16GB / 24GB 档，LPDDR5-6400 128-bit（102.4 GB/s）。8 核 GPU（1024 ALU），MacBook Air 入门配置。' },
+
+    { id: 'apple-m2-10', vendor: 'Apple', name: 'Apple M2 (10 核 GPU)', family: 'Apple M2',
+      type: 'apple-soc', platform: 'laptop', year: 2022, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos', 'ipados', 'visionos'], unifiedMemory: true,
+      aliases: ['Apple M2', 'M2', 'Apple M2 GPU', 'Apple GPU', 'Apple GPU (Apple M2)', 'Apple M2 10-Core GPU', 'Apple M2 10 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)'],
+      specs: { fp32Tflops: 3.58, fp16Tflops: 3.58, bandwidthGBs: 102.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 128, shaderUnits: null, gpuCores: 10, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 8GB / 16GB / 24GB 档，LPDDR5-6400 128-bit（102.4 GB/s）。10 核 GPU（1280 ALU）；MacBook Air / Pro 13 / iPad Pro / Vision Pro。' },
+
+    { id: 'apple-m2-pro-16', vendor: 'Apple', name: 'Apple M2 Pro (16 核 GPU)', family: 'Apple M2 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M2 Pro', 'M2 Pro', 'Apple M2 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M2 Pro)', 'Apple M2 Pro 16-Core GPU', 'Apple M2 Pro 16 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 5.7, fp16Tflops: 5.7, bandwidthGBs: 204.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 256, shaderUnits: null, gpuCores: 16, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 16GB / 32GB 档，LPDDR5-6400 256-bit（204.8 GB/s）。16 核 GPU（2048 ALU）。' },
+
+    { id: 'apple-m2-pro-19', vendor: 'Apple', name: 'Apple M2 Pro (19 核 GPU)', family: 'Apple M2 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M2 Pro', 'M2 Pro', 'Apple M2 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M2 Pro)', 'Apple M2 Pro 19-Core GPU', 'Apple M2 Pro 19 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 6.8, fp16Tflops: 6.8, bandwidthGBs: 204.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 256, shaderUnits: null, gpuCores: 19, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 16GB / 32GB 档，LPDDR5-6400 256-bit（204.8 GB/s）。19 核 GPU（2432 ALU），MacBook Pro 14/16 与 Mac mini 高配。' },
+
+    { id: 'apple-m2-max-30', vendor: 'Apple', name: 'Apple M2 Max (30 核 GPU)', family: 'Apple M2 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M2 Max', 'M2 Max', 'Apple M2 Max GPU', 'Apple GPU', 'Apple GPU (Apple M2 Max)', 'Apple M2 Max 30-Core GPU', 'Apple M2 Max 30 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 10.7, fp16Tflops: 10.7, bandwidthGBs: 409.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 512, shaderUnits: null, gpuCores: 30, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 32GB / 64GB / 96GB 档，LPDDR5-6400 512-bit（409.6 GB/s）。30 核 GPU（3840 ALU）。' },
+
+    { id: 'apple-m2-max-38', vendor: 'Apple', name: 'Apple M2 Max (38 核 GPU)', family: 'Apple M2 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M2 Max', 'M2 Max', 'Apple M2 Max GPU', 'Apple GPU', 'Apple GPU (Apple M2 Max)', 'Apple M2 Max 38-Core GPU', 'Apple M2 Max 38 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 13.6, fp16Tflops: 13.6, bandwidthGBs: 409.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 512, shaderUnits: null, gpuCores: 38, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 32GB / 64GB / 96GB 档，LPDDR5-6400 512-bit（409.6 GB/s）。38 核 GPU（4864 ALU）。' },
+
+    { id: 'apple-m2-ultra-60', vendor: 'Apple', name: 'Apple M2 Ultra (60 核 GPU)', family: 'Apple M2 Ultra',
+      type: 'apple-soc', platform: 'desktop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M2 Ultra', 'M2 Ultra', 'Apple M2 Ultra GPU', 'Apple GPU', 'Apple GPU (Apple M2 Ultra)', 'Apple M2 Ultra 60-Core GPU', 'Apple M2 Ultra 60 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Ultra, Unspecified Version)'],
+      specs: { fp32Tflops: 21.5, fp16Tflops: 21.5, bandwidthGBs: 819.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 1024, shaderUnits: null, gpuCores: 60, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 64GB / 128GB / 192GB 档，LPDDR5-6400 1024-bit（819.2 GB/s）。60 核 GPU（7680 ALU），Mac Studio / Mac Pro。' },
+
+    { id: 'apple-m2-ultra-76', vendor: 'Apple', name: 'Apple M2 Ultra (76 核 GPU)', family: 'Apple M2 Ultra',
+      type: 'apple-soc', platform: 'desktop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M2 Ultra', 'M2 Ultra', 'Apple M2 Ultra GPU', 'Apple GPU', 'Apple GPU (Apple M2 Ultra)', 'Apple M2 Ultra 76-Core GPU', 'Apple M2 Ultra 76 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Ultra, Unspecified Version)'],
+      specs: { fp32Tflops: 27.2, fp16Tflops: 27.2, bandwidthGBs: 819.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 1024, shaderUnits: null, gpuCores: 76, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 64GB / 128GB / 192GB 档，LPDDR5-6400 1024-bit（819.2 GB/s）。76 核 GPU（9728 ALU）。' },
+
+    { id: 'apple-m3-8', vendor: 'Apple', name: 'Apple M3 (8 核 GPU)', family: 'Apple M3',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3', 'M3', 'Apple M3 GPU', 'Apple GPU', 'Apple GPU (Apple M3)', 'Apple M3 8-Core GPU', 'Apple M3 8 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)'],
+      specs: { fp32Tflops: 2.9, fp16Tflops: 2.9, bandwidthGBs: 102.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 128, shaderUnits: null, gpuCores: 8, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 8GB / 16GB / 24GB 档，LPDDR5-6400 128-bit（102.4 GB/s）。8 核 GPU（1024 ALU），首代支持硬件光追与动态缓存。' },
+
+    { id: 'apple-m3-10', vendor: 'Apple', name: 'Apple M3 (10 核 GPU)', family: 'Apple M3',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3', 'M3', 'Apple M3 GPU', 'Apple GPU', 'Apple GPU (Apple M3)', 'Apple M3 10-Core GPU', 'Apple M3 10 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3, Unspecified Version)'],
+      specs: { fp32Tflops: 3.58, fp16Tflops: 3.58, bandwidthGBs: 102.4, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 128, shaderUnits: null, gpuCores: 10, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 8GB / 16GB / 24GB 档，LPDDR5-6400 128-bit（102.4 GB/s）。10 核 GPU（1280 ALU），支持硬件光追。' },
+
+    { id: 'apple-m3-pro-14', vendor: 'Apple', name: 'Apple M3 Pro (14 核 GPU)', family: 'Apple M3 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3 Pro', 'M3 Pro', 'Apple M3 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M3 Pro)', 'Apple M3 Pro 14-Core GPU', 'Apple M3 Pro 14 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 5.0, fp16Tflops: 5.0, bandwidthGBs: 153.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 192, shaderUnits: null, gpuCores: 14, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 18GB / 36GB 档，LPDDR5-6400 192-bit（153.6 GB/s）。14 核 GPU（1792 ALU），MacBook Pro 14/16 入门配置。' },
+
+    { id: 'apple-m3-pro-18', vendor: 'Apple', name: 'Apple M3 Pro (18 核 GPU)', family: 'Apple M3 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3 Pro', 'M3 Pro', 'Apple M3 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M3 Pro)', 'Apple M3 Pro 18-Core GPU', 'Apple M3 Pro 18 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 6.4, fp16Tflops: 6.4, bandwidthGBs: 153.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 192, shaderUnits: null, gpuCores: 18, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 18GB / 36GB 档，LPDDR5-6400 192-bit（153.6 GB/s）。18 核 GPU（2304 ALU）。' },
+
+    { id: 'apple-m3-max-30', vendor: 'Apple', name: 'Apple M3 Max (30 核 GPU)', family: 'Apple M3 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3 Max', 'M3 Max', 'Apple M3 Max GPU', 'Apple GPU', 'Apple GPU (Apple M3 Max)', 'Apple M3 Max 30-Core GPU', 'Apple M3 Max 30 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 10.7, fp16Tflops: 10.7, bandwidthGBs: 307.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 384, shaderUnits: null, gpuCores: 30, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 36GB / 48GB 档，LPDDR5-6400 384-bit（307.2 GB/s，Apple 标称 300 GB/s）。30 核 GPU（3840 ALU），配 14 核 CPU 机型。' },
+
+    { id: 'apple-m3-max-40', vendor: 'Apple', name: 'Apple M3 Max (40 核 GPU)', family: 'Apple M3 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3 Max', 'M3 Max', 'Apple M3 Max GPU', 'Apple GPU', 'Apple GPU (Apple M3 Max)', 'Apple M3 Max 40-Core GPU', 'Apple M3 Max 40 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 14.3, fp16Tflops: 14.3, bandwidthGBs: 409.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 512, shaderUnits: null, gpuCores: 40, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 48GB / 64GB / 128GB 档，LPDDR5-6400 512-bit（409.6 GB/s，Apple 标称 400 GB/s）。40 核 GPU（5120 ALU）。' },
+
+    { id: 'apple-m3-ultra-60', vendor: 'Apple', name: 'Apple M3 Ultra (60 核 GPU)', family: 'Apple M3 Ultra',
+      type: 'apple-soc', platform: 'desktop', year: 2025, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3 Ultra', 'M3 Ultra', 'Apple M3 Ultra GPU', 'Apple GPU', 'Apple GPU (Apple M3 Ultra)', 'Apple M3 Ultra 60-Core GPU', 'Apple M3 Ultra 60 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Ultra, Unspecified Version)'],
+      specs: { fp32Tflops: 21.5, fp16Tflops: 21.5, bandwidthGBs: 819.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 1024, shaderUnits: null, gpuCores: 60, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 96GB / 256GB / 512GB 档，LPDDR5-6400 1024-bit（819.2 GB/s）。60 核 GPU（7680 ALU），Mac Studio 2025。' },
+
+    { id: 'apple-m3-ultra-80', vendor: 'Apple', name: 'Apple M3 Ultra (80 核 GPU)', family: 'Apple M3 Ultra',
+      type: 'apple-soc', platform: 'desktop', year: 2025, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M3 Ultra', 'M3 Ultra', 'Apple M3 Ultra GPU', 'Apple GPU', 'Apple GPU (Apple M3 Ultra)', 'Apple M3 Ultra 80-Core GPU', 'Apple M3 Ultra 80 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Ultra, Unspecified Version)'],
+      specs: { fp32Tflops: 28.6, fp16Tflops: 28.6, bandwidthGBs: 819.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 1024, shaderUnits: null, gpuCores: 80, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '统一内存 96GB / 256GB / 512GB 档，LPDDR5-6400 1024-bit（819.2 GB/s）。80 核 GPU（10240 ALU），Apple 史上最多 GPU 核心。' },
+
+    { id: 'apple-m4-8', vendor: 'Apple', name: 'Apple M4 (8 核 GPU)', family: 'Apple M4',
+      type: 'apple-soc', platform: 'laptop', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple M4', 'M4', 'Apple M4 GPU', 'Apple GPU', 'Apple GPU (Apple M4)', 'Apple M4 8-Core GPU', 'Apple M4 8 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)'],
+      specs: { fp32Tflops: 3.3, fp16Tflops: 3.3, bandwidthGBs: 120, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: null, gpuCores: 8, baseClockMhz: null, boostClockMhz: 1600 },
+      note: '统一内存 16GB / 24GB / 32GB 档，LPDDR5X-7500 128-bit（120 GB/s）。8 核 GPU（1024 ALU），MacBook Air / iMac 入门配置。' },
+
+    { id: 'apple-m4-10', vendor: 'Apple', name: 'Apple M4 (10 核 GPU)', family: 'Apple M4',
+      type: 'apple-soc', platform: 'laptop', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple M4', 'M4', 'Apple M4 GPU', 'Apple GPU', 'Apple GPU (Apple M4)', 'Apple M4 10-Core GPU', 'Apple M4 10 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)'],
+      specs: { fp32Tflops: 4.1, fp16Tflops: 4.1, bandwidthGBs: 120, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: null, gpuCores: 10, baseClockMhz: null, boostClockMhz: 1600 },
+      note: '统一内存 16GB / 24GB / 32GB 档，LPDDR5X-7500 128-bit（120 GB/s）。10 核 GPU（1280 ALU），第二代硬件光追；iPad Pro M4 高配同款。' },
+
+    { id: 'apple-m4-pro-16', vendor: 'Apple', name: 'Apple M4 Pro (16 核 GPU)', family: 'Apple M4 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M4 Pro', 'M4 Pro', 'Apple M4 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M4 Pro)', 'Apple M4 Pro 16-Core GPU', 'Apple M4 Pro 16 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 6.6, fp16Tflops: 6.6, bandwidthGBs: 273, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 256, shaderUnits: null, gpuCores: 16, baseClockMhz: null, boostClockMhz: 1600 },
+      note: '统一内存 24GB / 48GB / 64GB 档，LPDDR5X-8533 256-bit（273 GB/s）。16 核 GPU（2048 ALU）。' },
+
+    { id: 'apple-m4-pro-20', vendor: 'Apple', name: 'Apple M4 Pro (20 核 GPU)', family: 'Apple M4 Pro',
+      type: 'apple-soc', platform: 'laptop', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M4 Pro', 'M4 Pro', 'Apple M4 Pro GPU', 'Apple GPU', 'Apple GPU (Apple M4 Pro)', 'Apple M4 Pro 20-Core GPU', 'Apple M4 Pro 20 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 8.2, fp16Tflops: 8.2, bandwidthGBs: 273, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 256, shaderUnits: null, gpuCores: 20, baseClockMhz: null, boostClockMhz: 1600 },
+      note: '统一内存 24GB / 48GB / 64GB 档，LPDDR5X-8533 256-bit（273 GB/s）。20 核 GPU（2560 ALU）。' },
+
+    { id: 'apple-m4-max-32', vendor: 'Apple', name: 'Apple M4 Max (32 核 GPU)', family: 'Apple M4 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M4 Max', 'M4 Max', 'Apple M4 Max GPU', 'Apple GPU', 'Apple GPU (Apple M4 Max)', 'Apple M4 Max 32-Core GPU', 'Apple M4 Max 32 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 13.1, fp16Tflops: 13.1, bandwidthGBs: 410, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 384, shaderUnits: null, gpuCores: 32, baseClockMhz: null, boostClockMhz: 1600 },
+      note: '统一内存 36GB / 48GB 档，LPDDR5X-8533 384-bit（Apple 标称 410 GB/s）。32 核 GPU（4096 ALU），配 14 核 CPU 机型。' },
+
+    { id: 'apple-m4-max-40', vendor: 'Apple', name: 'Apple M4 Max (40 核 GPU)', family: 'Apple M4 Max',
+      type: 'apple-soc', platform: 'laptop', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos'], unifiedMemory: true,
+      aliases: ['Apple M4 Max', 'M4 Max', 'Apple M4 Max GPU', 'Apple GPU', 'Apple GPU (Apple M4 Max)', 'Apple M4 Max 40-Core GPU', 'Apple M4 Max 40 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Max, Unspecified Version)'],
+      specs: { fp32Tflops: 16.4, fp16Tflops: 16.4, bandwidthGBs: 546, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 512, shaderUnits: null, gpuCores: 40, baseClockMhz: null, boostClockMhz: 1600 },
+      note: '统一内存 48GB / 64GB / 128GB 档，LPDDR5X-8533 512-bit（Apple 标称 546 GB/s）。40 核 GPU（5120 ALU）。' },
+
+    { id: 'apple-m5-10', vendor: 'Apple', name: 'Apple M5 (10 核 GPU)', family: 'Apple M5',
+      type: 'apple-soc', platform: 'laptop', year: 2025, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['macos', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple M5', 'M5', 'Apple M5 GPU', 'Apple GPU', 'Apple GPU (Apple M5)', 'Apple M5 10-Core GPU', 'Apple M5 10 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M5, Unspecified Version)'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 153, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 128, shaderUnits: null, gpuCores: 10, baseClockMhz: null, boostClockMhz: null },
+      note: '统一内存 16GB / 24GB / 32GB 档，Apple 标称 153 GB/s（LPDDR5X 128-bit）。10 核 GPU，每核内置 Neural Accelerator；GPU 频率未公布，FP32 填 null。' },
+
+    /* ==================================================================
+     * 五、Apple A 系列（iPhone / iPad SoC）
+     *   ALU 数来自公开拆解与媒体规格表（128 ALU/核 = 16 EU/核）；频率未公开者填 null。
+     * ================================================================== */
+
+    { id: 'apple-a12x', vendor: 'Apple', name: 'Apple A12X Bionic GPU (7 核)', family: 'Apple A12X',
+      type: 'mobile-soc', platform: 'tablet', year: 2018, api: 'metal',
+      apis: ['metal', 'opengl', 'webgpu'], os: ['ipados'], unifiedMemory: true,
+      aliases: ['Apple A12X', 'A12X', 'A12X Bionic', 'Apple GPU', 'Apple A12X Bionic GPU', 'Apple A12X 7-Core GPU', 'Apple GPU (A12X)', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A12X, Unspecified Version)'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: null, gpuCores: 7, baseClockMhz: null, boostClockMhz: null },
+      note: '7 核 GPU；统一内存 4GB / 6GB 档，LPDDR4X-4266 128-bit（68.3 GB/s）。iPad Pro 2018。ALU 数与频率未公开，FP32 填 null。' },
+
+    { id: 'apple-a12z', vendor: 'Apple', name: 'Apple A12Z Bionic GPU (8 核)', family: 'Apple A12Z',
+      type: 'mobile-soc', platform: 'tablet', year: 2020, api: 'metal',
+      apis: ['metal', 'opengl', 'webgpu'], os: ['ipados'], unifiedMemory: true,
+      aliases: ['Apple A12Z', 'A12Z', 'A12Z Bionic', 'Apple GPU', 'Apple A12Z Bionic GPU', 'Apple A12Z 8-Core GPU', 'Apple GPU (A12Z)', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A12Z, Unspecified Version)'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: null, gpuCores: 8, baseClockMhz: null, boostClockMhz: null },
+      note: '8 核 GPU（A12X 的 8 核满血版）；统一内存 6GB 档，LPDDR4X-4266 128-bit（68.3 GB/s）。iPad Pro 2020 与 Apple 开发者过渡套件。' },
+
+    { id: 'apple-a14', vendor: 'Apple', name: 'Apple A14 Bionic GPU (4 核)', family: 'Apple A14',
+      type: 'mobile-soc', platform: 'phone', year: 2020, api: 'metal',
+      apis: ['metal', 'opengl', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A14', 'A14 Bionic', 'Apple A14 Bionic GPU', 'Apple GPU', 'Apple GPU (A14)', 'Apple A14 4-Core GPU', 'Apple A14 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A14, Unspecified Version)'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: 4, baseClockMhz: null, boostClockMhz: null },
+      note: '4 核 GPU；统一内存 4GB / 6GB 档，LPDDR4X-4266 64-bit（34.1 GB/s）。iPhone 12 系列 / iPad Air 4。GPU 频率未公开，FP32 填 null。' },
+
+    { id: 'apple-a15-4', vendor: 'Apple', name: 'Apple A15 Bionic GPU (4 核)', family: 'Apple A15',
+      type: 'mobile-soc', platform: 'phone', year: 2021, api: 'metal',
+      apis: ['metal', 'opengl', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A15', 'A15 Bionic', 'Apple A15 Bionic GPU', 'Apple GPU', 'Apple GPU (A15)', 'Apple A15 4-Core GPU', 'Apple A15 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A15, Unspecified Version)'],
+      specs: { fp32Tflops: 1.37, fp16Tflops: 1.37, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: 4, baseClockMhz: null, boostClockMhz: 1338 },
+      note: '4 核 GPU（512 ALU）；统一内存 4GB / 6GB 档，LPDDR4X-4266 64-bit（34.1 GB/s）。iPhone 13 / 13 mini 与 iPad mini 6 部分批次。FP32 按 128 ALU/核 × 1338 MHz 估算。' },
+
+    { id: 'apple-a15-5', vendor: 'Apple', name: 'Apple A15 Bionic GPU (5 核)', family: 'Apple A15',
+      type: 'mobile-soc', platform: 'phone', year: 2021, api: 'metal',
+      apis: ['metal', 'opengl', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A15', 'A15 Bionic', 'Apple A15 Bionic GPU', 'Apple GPU', 'Apple GPU (A15)', 'Apple A15 5-Core GPU', 'Apple A15 Bionic 5 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A15, Unspecified Version)'],
+      specs: { fp32Tflops: 1.71, fp16Tflops: 1.71, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: 5, baseClockMhz: null, boostClockMhz: 1338 },
+      note: '5 核 GPU（640 ALU）；统一内存 6GB 档，LPDDR4X-4266 64-bit（34.1 GB/s）。iPhone 13 Pro / 13 Pro Max 与 iPad mini 6。' },
+
+    { id: 'apple-a16-5', vendor: 'Apple', name: 'Apple A16 Bionic GPU (5 核)', family: 'Apple A16',
+      type: 'mobile-soc', platform: 'phone', year: 2022, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A16', 'A16 Bionic', 'Apple A16 Bionic GPU', 'Apple GPU', 'Apple GPU (A16)', 'Apple A16 5-Core GPU', 'Apple A16 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A16, Unspecified Version)'],
+      specs: { fp32Tflops: 1.79, fp16Tflops: 1.79, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: 5, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '5 核 GPU（640 ALU）；统一内存 6GB 档，LPDDR5-6400 64-bit（51.2 GB/s）。iPhone 14 Pro / 15 / 15 Plus。' },
+
+    { id: 'apple-a17-pro-6', vendor: 'Apple', name: 'Apple A17 Pro GPU (6 核)', family: 'Apple A17 Pro',
+      type: 'mobile-soc', platform: 'phone', year: 2023, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A17 Pro', 'A17 Pro', 'Apple A17 Pro GPU', 'Apple GPU', 'Apple GPU (A17 Pro)', 'Apple A17 Pro 6-Core GPU', 'A17 Pro GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A17 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 2.15, fp16Tflops: 2.15, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: 6, baseClockMhz: null, boostClockMhz: 1398 },
+      note: '6 核 GPU（768 ALU / 96 EU）；统一内存 8GB 档，LPDDR5-6400 64-bit（51.2 GB/s）。iPhone 15 Pro / Pro Max，首个支持硬件光追的 A 系列。' },
+
+    { id: 'apple-a18-5', vendor: 'Apple', name: 'Apple A18 GPU (5 核)', family: 'Apple A18',
+      type: 'mobile-soc', platform: 'phone', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A18', 'A18', 'Apple A18 GPU', 'Apple GPU', 'Apple GPU (A18)', 'Apple A18 5-Core GPU', 'Apple A18 5 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A18, Unspecified Version)'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 60, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: 5, baseClockMhz: null, boostClockMhz: null },
+      note: '5 核 GPU（640 ALU）；统一内存 8GB 档，LPDDR5X-7500 64-bit（约 60 GB/s，公开拆解数据）。iPhone 16 / 16 Plus。GPU 频率未公布，FP32 填 null。' },
+
+    { id: 'apple-a18-pro-6', vendor: 'Apple', name: 'Apple A18 Pro GPU (6 核)', family: 'Apple A18 Pro',
+      type: 'mobile-soc', platform: 'phone', year: 2024, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A18 Pro', 'A18 Pro', 'Apple A18 Pro GPU', 'Apple GPU', 'Apple GPU (A18 Pro)', 'Apple A18 Pro 6-Core GPU', 'Apple A18 Pro 6 核 GPU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A18 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 60, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: 6, baseClockMhz: null, boostClockMhz: null },
+      note: '6 核 GPU（768 ALU / 96 EU）；统一内存 8GB 档，LPDDR5X-7500 64-bit（约 60 GB/s）。iPhone 16 Pro / Pro Max。GPU 频率未公布，FP32 填 null。' },
+
+    { id: 'apple-a19-5', vendor: 'Apple', name: 'Apple A19 GPU (5 核)', family: 'Apple A19',
+      type: 'mobile-soc', platform: 'phone', year: 2025, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A19', 'A19', 'Apple A19 GPU', 'Apple GPU', 'Apple GPU (A19)', 'Apple A19 5-Core GPU', 'Apple A19 80 EU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A19, Unspecified Version)'],
+      specs: { fp32Tflops: 2.07, fp16Tflops: 2.07, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: 5, baseClockMhz: null, boostClockMhz: 1620 },
+      note: '5 核 GPU = 80 EU（640 ALU），GPU 频率 1620 MHz；统一内存 8GB 档，LPDDR5X-8533 64-bit（68.26 GB/s）。iPhone 17。' },
+
+    { id: 'apple-a19-pro-5', vendor: 'Apple', name: 'Apple A19 Pro GPU (5 核, iPhone Air)', family: 'Apple A19 Pro',
+      type: 'mobile-soc', platform: 'phone', year: 2025, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A19 Pro', 'A19 Pro', 'Apple A19 Pro GPU', 'Apple GPU', 'Apple GPU (A19 Pro)', 'Apple A19 Pro 5-Core GPU', 'Apple A19 Pro 80 EU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A19 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 2.07, fp16Tflops: 2.07, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: 5, baseClockMhz: null, boostClockMhz: 1620 },
+      note: 'iPhone Air 阉割版 A19 Pro：5 核 GPU = 80 EU（640 ALU），1620 MHz；统一内存 12GB 档，LPDDR5X-8533（68.26 GB/s）。' },
+
+    { id: 'apple-a19-pro-6', vendor: 'Apple', name: 'Apple A19 Pro GPU (6 核)', family: 'Apple A19 Pro',
+      type: 'mobile-soc', platform: 'phone', year: 2025, api: 'metal',
+      apis: ['metal', 'webgpu'], os: ['ios', 'ipados'], unifiedMemory: true,
+      aliases: ['Apple A19 Pro', 'A19 Pro', 'Apple A19 Pro GPU', 'Apple GPU', 'Apple GPU (A19 Pro)', 'Apple A19 Pro 6-Core GPU', 'Apple A19 Pro 96 EU', 'ANGLE (Apple, ANGLE Metal Renderer: Apple A19 Pro, Unspecified Version)'],
+      specs: { fp32Tflops: 2.49, fp16Tflops: 2.49, bandwidthGBs: 75.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: 6, baseClockMhz: null, boostClockMhz: 1620 },
+      note: '满配 A19 Pro：6 核 GPU = 96 EU（768 ALU），1620 MHz；统一内存 12GB 档，LPDDR5X-9600 64-bit（75.8 GB/s）。iPhone 17 Pro / Pro Max，每核内置 Neural Accelerator。' },
+
+    /* ==================================================================
+     * 六、Qualcomm Adreno（骁龙 / 骁龙 X 系列 SoC GPU）
+     *   Adreno 的 ALU 数与频率从未公开：除主库已有公开估算的旗舰档
+     *   （830 / 750 / 740 / 730）外 fp32Tflops 一律 null。
+     *   带宽按该 SoC 支持的内存规格换算（64-bit / 128-bit LPDDR）。
+     * ================================================================== */
+
+    { id: 'qualcomm-adreno-840', vendor: 'Qualcomm', name: 'Adreno 840', family: 'Snapdragon 8 Elite Gen 5',
+      type: 'mobile-soc', platform: 'phone', year: 2025, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 840', 'Adreno (TM) 840', 'Qualcomm Adreno 840', 'Adreno 840 GPU', 'ANGLE (Qualcomm, Adreno (TM) 840, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 840 GPU', 'Snapdragon 8 Elite Gen 5'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 85.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8 Elite Gen 5（2025 旗舰，Adreno 8 系）；统一内存共享 LPDDR5X-10667 双通道 64-bit（约 85.3 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-830', vendor: 'Qualcomm', name: 'Adreno 830', family: 'Snapdragon 8 Elite',
+      type: 'mobile-soc', platform: 'phone', year: 2024, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 830', 'Adreno (TM) 830', 'Qualcomm Adreno 830', 'Adreno 830 GPU', 'ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 830 GPU', 'Snapdragon 8 Elite'],
+      specs: { fp32Tflops: 4.6, fp16Tflops: 4.6, bandwidthGBs: 76.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8 Elite（Adreno 8 系，官方称较上代 +40%）；统一内存共享 LPDDR5X-9600 64-bit（76.8 GB/s）。FP32 为公开第三方估算，ALU 数未公开。' },
+
+    { id: 'qualcomm-adreno-750', vendor: 'Qualcomm', name: 'Adreno 750', family: 'Snapdragon 8 Gen 3',
+      type: 'mobile-soc', platform: 'phone', year: 2023, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 750', 'Adreno (TM) 750', 'Qualcomm Adreno 750', 'Adreno 750 GPU', 'ANGLE (Qualcomm, Adreno (TM) 750, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 750 GPU', 'Snapdragon 8 Gen 3'],
+      specs: { fp32Tflops: 2.6, fp16Tflops: 2.6, bandwidthGBs: 76.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8 Gen 3（Adreno 7 系）；统一内存共享 LPDDR5X-9600 64-bit（76.8 GB/s）。FP32 为公开第三方估算，ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-740', vendor: 'Qualcomm', name: 'Adreno 740', family: 'Snapdragon 8 Gen 2 / XR2 Gen 2',
+      type: 'mobile-soc', platform: 'phone', year: 2022, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 740', 'Adreno (TM) 740', 'Qualcomm Adreno 740', 'Adreno 740 GPU', 'ANGLE (Qualcomm, Adreno (TM) 740, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 740 GPU', 'Snapdragon 8 Gen 2', 'Meta Quest 3', 'Snapdragon XR2 Gen 2'],
+      specs: { fp32Tflops: 2.4, fp16Tflops: 2.4, bandwidthGBs: 67.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8 Gen 2 / XR2 Gen 2（Meta Quest 3 同款变体）；统一内存共享 LPDDR5X-8400 64-bit（67.2 GB/s）。FP32 为公开第三方估算。' },
+
+    { id: 'qualcomm-adreno-735', vendor: 'Qualcomm', name: 'Adreno 735', family: 'Snapdragon 8s Gen 3',
+      type: 'mobile-soc', platform: 'phone', year: 2024, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 735', 'Adreno (TM) 735', 'Qualcomm Adreno 735', 'Adreno 735 GPU', 'ANGLE (Qualcomm, Adreno (TM) 735, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 735 GPU', 'Snapdragon 8s Gen 3'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8s Gen 3（Adreno 7 系，与 8 Gen 3 同架构精简）；统一内存共享 LPDDR5X-8533 64-bit（68.3 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-732', vendor: 'Qualcomm', name: 'Adreno 732', family: 'Snapdragon 7+ Gen 3',
+      type: 'mobile-soc', platform: 'phone', year: 2024, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 732', 'Adreno (TM) 732', 'Qualcomm Adreno 732', 'Adreno 732 GPU', 'ANGLE (Qualcomm, Adreno (TM) 732, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 732 GPU', 'Snapdragon 7+ Gen 3'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 7+ Gen 3；统一内存共享 LPDDR5X-8533 64-bit（68.3 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-730', vendor: 'Qualcomm', name: 'Adreno 730', family: 'Snapdragon 8 Gen 1 / 8+ Gen 1',
+      type: 'mobile-soc', platform: 'phone', year: 2021, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 730', 'Adreno (TM) 730', 'Qualcomm Adreno 730', 'Adreno 730 GPU', 'ANGLE (Qualcomm, Adreno (TM) 730, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 730 GPU', 'Snapdragon 8 Gen 1', 'Snapdragon 8+ Gen 1'],
+      specs: { fp32Tflops: 2.0, fp16Tflops: 2.0, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8 Gen 1 / 8+ Gen 1（Adreno 7 系首发）；统一内存共享 LPDDR5-6400 64-bit（51.2 GB/s）。FP32 为公开第三方估算。' },
+
+    { id: 'qualcomm-adreno-725', vendor: 'Qualcomm', name: 'Adreno 725', family: 'Snapdragon 7+ Gen 2',
+      type: 'mobile-soc', platform: 'phone', year: 2023, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 725', 'Adreno (TM) 725', 'Qualcomm Adreno 725', 'Adreno 725 GPU', 'ANGLE (Qualcomm, Adreno (TM) 725, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 725 GPU', 'Snapdragon 7+ Gen 2'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 7+ Gen 2；统一内存共享 LPDDR5-6400 64-bit（51.2 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-720', vendor: 'Qualcomm', name: 'Adreno 720', family: 'Snapdragon 7 Gen 3',
+      type: 'mobile-soc', platform: 'phone', year: 2023, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 720', 'Adreno (TM) 720', 'Qualcomm Adreno 720', 'Adreno 720 GPU', 'ANGLE (Qualcomm, Adreno (TM) 720, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 720 GPU', 'Snapdragon 7 Gen 3'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 7 Gen 3；统一内存共享 LPDDR5-6400 64-bit（51.2 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-710', vendor: 'Qualcomm', name: 'Adreno 710', family: 'Snapdragon 6 Gen 1 / 7s Gen 2',
+      type: 'mobile-soc', platform: 'phone', year: 2022, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 710', 'Adreno (TM) 710', 'Qualcomm Adreno 710', 'Adreno 710 GPU', 'ANGLE (Qualcomm, Adreno (TM) 710, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 710 GPU', 'Snapdragon 6 Gen 1', 'Snapdragon 7s Gen 2'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 6 Gen 1 / 7s Gen 2；统一内存共享 LPDDR5-6400 64-bit（51.2 GB/s，低配机型为 LPDDR4X 约 34.1 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-702', vendor: 'Qualcomm', name: 'Adreno 702', family: 'Qualcomm Adreno 7 系（SoC 未确认）',
+      type: 'mobile-soc', platform: 'phone', year: null, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 702', 'Adreno (TM) 702', 'Qualcomm Adreno 702', 'Adreno 702 GPU', 'ANGLE (Qualcomm, Adreno (TM) 702, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 702 GPU'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: null, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: null, busWidth: null, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '渲染器字符串中确实出现过的 Adreno 7 系编号，但公开资料未给出对应骁龙 SoC 与年份 —— 年份/带宽/内存类型全部填 null，不做推测。' },
+
+    { id: 'qualcomm-adreno-700', vendor: 'Qualcomm', name: 'Adreno 700', family: 'Qualcomm Adreno 7 系（SoC 未确认）',
+      type: 'mobile-soc', platform: 'phone', year: null, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 700', 'Adreno (TM) 700', 'Qualcomm Adreno 700', 'Adreno 700 GPU', 'ANGLE (Qualcomm, Adreno (TM) 700, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 700 GPU'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: null, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: null, busWidth: null, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: 'Adreno 7 系基础编号，公开资料未确认对应骁龙 SoC 与年份 —— 除别名外全部填 null，不做推测。' },
+
+    { id: 'qualcomm-adreno-690', vendor: 'Qualcomm', name: 'Adreno 690', family: 'Snapdragon 8cx Gen 3 / Microsoft SQ3',
+      type: 'mobile-soc', platform: 'laptop', year: 2021, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android', 'windows'], unifiedMemory: true,
+      aliases: ['Adreno 690', 'Adreno (TM) 690', 'Qualcomm Adreno 690', 'Qualcomm(R) Adreno(TM) 690 GPU', 'Adreno 690 GPU', 'ANGLE (Qualcomm, Adreno (TM) 690, OpenGL ES 3.2)', 'Snapdragon 8cx Gen 3', 'Microsoft SQ3', 'Surface Pro 9 5G'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8cx Gen 3 / Microsoft SQ3（Windows on ARM 笔记本）；统一内存共享 LPDDR4X-4266 128-bit（68.3 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-685', vendor: 'Qualcomm', name: 'Adreno 685', family: 'Snapdragon 8cx Gen 2 / Microsoft SQ2',
+      type: 'mobile-soc', platform: 'laptop', year: 2020, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android', 'windows'], unifiedMemory: true,
+      aliases: ['Adreno 685', 'Adreno (TM) 685', 'Qualcomm Adreno 685', 'Qualcomm(R) Adreno(TM) 685 GPU', 'Adreno 685 GPU', 'ANGLE (Qualcomm, Adreno (TM) 685, OpenGL ES 3.2)', 'Snapdragon 8cx Gen 2', 'Microsoft SQ2'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8cx Gen 2 / Microsoft SQ2（Surface Pro X）；统一内存共享 LPDDR4X-4266 128-bit（68.3 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-680', vendor: 'Qualcomm', name: 'Adreno 680', family: 'Snapdragon 8cx Gen 1 / 8c',
+      type: 'mobile-soc', platform: 'laptop', year: 2018, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android', 'windows'], unifiedMemory: true,
+      aliases: ['Adreno 680', 'Adreno (TM) 680', 'Qualcomm Adreno 680', 'Qualcomm(R) Adreno(TM) 680 GPU', 'Adreno 680 GPU', 'ANGLE (Qualcomm, Adreno (TM) 680, OpenGL ES 3.2)', 'Snapdragon 8cx', 'Snapdragon 8c'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 68.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 128, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 8cx Gen 1 / 8c（首批 Windows on ARM 平台）；统一内存共享 LPDDR4X-4266 128-bit（68.3 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-660', vendor: 'Qualcomm', name: 'Adreno 660', family: 'Snapdragon 888 / 888+',
+      type: 'mobile-soc', platform: 'phone', year: 2020, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 660', 'Adreno (TM) 660', 'Qualcomm Adreno 660', 'Adreno 660 GPU', 'ANGLE (Qualcomm, Adreno (TM) 660, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 660 GPU', 'Snapdragon 888'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 888 / 888+；统一内存共享 LPDDR5-6400 64-bit（51.2 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-650', vendor: 'Qualcomm', name: 'Adreno 650', family: 'Snapdragon 865 / 865+ / 870',
+      type: 'mobile-soc', platform: 'phone', year: 2020, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 650', 'Adreno (TM) 650', 'Qualcomm Adreno 650', 'Adreno 650 GPU', 'ANGLE (Qualcomm, Adreno (TM) 650, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 650 GPU', 'Snapdragon 865', 'Snapdragon 870'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 44, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 865 / 865+ / 870；统一内存共享 LPDDR5-5500 64-bit（44 GB/s，LPDDR4X-4266 机型约 34.1 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-642l', vendor: 'Qualcomm', name: 'Adreno 642L', family: 'Snapdragon 778G / 778G+',
+      type: 'mobile-soc', platform: 'phone', year: 2021, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 642L', 'Adreno (TM) 642L', 'Qualcomm Adreno 642L', 'Adreno 642L GPU', 'ANGLE (Qualcomm, Adreno (TM) 642L, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 642L GPU', 'Snapdragon 778G', 'Snapdragon 778G+'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 51.2, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR5', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 778G / 778G+（Adreno 6 系最后一档）；统一内存共享 LPDDR5-6400 64-bit（51.2 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-640', vendor: 'Qualcomm', name: 'Adreno 640', family: 'Snapdragon 855 / 855+ / 860',
+      type: 'mobile-soc', platform: 'phone', year: 2019, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 640', 'Adreno (TM) 640', 'Qualcomm Adreno 640', 'Adreno 640 GPU', 'ANGLE (Qualcomm, Adreno (TM) 640, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 640 GPU', 'Snapdragon 855'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 855 / 855+ / 860；统一内存共享 LPDDR4X-4266 64-bit（34.1 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-630', vendor: 'Qualcomm', name: 'Adreno 630', family: 'Snapdragon 845 / 850',
+      type: 'mobile-soc', platform: 'phone', year: 2018, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 630', 'Adreno (TM) 630', 'Qualcomm Adreno 630', 'Adreno 630 GPU', 'ANGLE (Qualcomm, Adreno (TM) 630, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 630 GPU', 'Snapdragon 845', 'Meta Quest 2'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 845 / 850（XR2 Gen 1 同源，Meta Quest 2 使用）；统一内存共享 LPDDR4X-3733 64-bit（29.9 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-620', vendor: 'Qualcomm', name: 'Adreno 620', family: 'Snapdragon 765 / 765G / 768G',
+      type: 'mobile-soc', platform: 'phone', year: 2019, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 620', 'Adreno (TM) 620', 'Qualcomm Adreno 620', 'Adreno 620 GPU', 'ANGLE (Qualcomm, Adreno (TM) 620, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 620 GPU', 'Snapdragon 765G'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 765 / 765G / 768G（首批集成 5G 的中端平台）；统一内存共享 LPDDR4X-3733 64-bit（29.9 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-619', vendor: 'Qualcomm', name: 'Adreno 619', family: 'Snapdragon 750G / 690 / 695',
+      type: 'mobile-soc', platform: 'phone', year: 2020, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 619', 'Adreno (TM) 619', 'Qualcomm Adreno 619', 'Adreno 619 GPU', 'ANGLE (Qualcomm, Adreno (TM) 619, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 619 GPU', 'Snapdragon 695', 'Snapdragon 750G'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 750G / 690 / 695；统一内存共享 LPDDR4X-4266 64-bit（34.1 GB/s，750G 机型为 LPDDR4X-3733 约 29.9 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-618', vendor: 'Qualcomm', name: 'Adreno 618', family: 'Snapdragon 730 / 730G / 732G / 720G / 7c',
+      type: 'mobile-soc', platform: 'phone', year: 2019, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 618', 'Adreno (TM) 618', 'Qualcomm Adreno 618', 'Adreno 618 GPU', 'ANGLE (Qualcomm, Adreno (TM) 618, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 618 GPU', 'Snapdragon 730G', 'Snapdragon 720G'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 730 / 730G / 732G / 720G / 7c；统一内存共享 LPDDR4X-3733 64-bit（29.9 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-616', vendor: 'Qualcomm', name: 'Adreno 616', family: 'Snapdragon 710 / 712',
+      type: 'mobile-soc', platform: 'phone', year: 2018, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 616', 'Adreno (TM) 616', 'Qualcomm Adreno 616', 'Adreno 616 GPU', 'ANGLE (Qualcomm, Adreno (TM) 616, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 616 GPU', 'Snapdragon 710'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 710 / 712；统一内存共享 LPDDR4X-3733 64-bit（29.9 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-612', vendor: 'Qualcomm', name: 'Adreno 612', family: 'Snapdragon 675 / 678',
+      type: 'mobile-soc', platform: 'phone', year: 2018, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 612', 'Adreno (TM) 612', 'Qualcomm Adreno 612', 'Adreno 612 GPU', 'ANGLE (Qualcomm, Adreno (TM) 612, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 612 GPU', 'Snapdragon 675'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 675 / 678；统一内存共享 LPDDR4X-3733 64-bit（29.9 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-610', vendor: 'Qualcomm', name: 'Adreno 610', family: 'Snapdragon 665 / 660 / 662 / 680 / 685',
+      type: 'mobile-soc', platform: 'phone', year: 2019, api: 'vulkan',
+      apis: ['vulkan', 'opengl', 'webgpu'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 610', 'Adreno (TM) 610', 'Qualcomm Adreno 610', 'Adreno 610 GPU', 'ANGLE (Qualcomm, Adreno (TM) 610, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 610 GPU', 'Snapdragon 680', 'Snapdragon 665'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 665 / 660 / 662 / 680 / 685；统一内存共享 LPDDR4X-4266 64-bit（34.1 GB/s，665 等老机型为 LPDDR4X-3733 约 29.9 GB/s）。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-540', vendor: 'Qualcomm', name: 'Adreno 540', family: 'Snapdragon 835',
+      type: 'mobile-soc', platform: 'phone', year: 2017, api: 'vulkan',
+      apis: ['opengl', 'vulkan'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 540', 'Adreno (TM) 540', 'Qualcomm Adreno 540', 'Adreno 540 GPU', 'ANGLE (Qualcomm, Adreno (TM) 540, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 540 GPU', 'Snapdragon 835'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4X', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 835；统一内存共享 LPDDR4X-3733 64-bit（29.9 GB/s）。Adreno 5 系仅支持 Vulkan 1.0，未列入 WebGPU 支持。ALU/频率未公开。' },
+
+    { id: 'qualcomm-adreno-530', vendor: 'Qualcomm', name: 'Adreno 530', family: 'Snapdragon 820 / 821',
+      type: 'mobile-soc', platform: 'phone', year: 2016, api: 'vulkan',
+      apis: ['opengl', 'vulkan'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 530', 'Adreno (TM) 530', 'Qualcomm Adreno 530', 'Adreno 530 GPU', 'ANGLE (Qualcomm, Adreno (TM) 530, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 530 GPU', 'Snapdragon 820', 'Snapdragon 821'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 820 / 821；统一内存共享 LPDDR4-3733 64-bit（29.9 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-512', vendor: 'Qualcomm', name: 'Adreno 512', family: 'Snapdragon 660 / 665',
+      type: 'mobile-soc', platform: 'phone', year: 2017, api: 'vulkan',
+      apis: ['opengl', 'vulkan'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 512', 'Adreno (TM) 512', 'Qualcomm Adreno 512', 'Adreno 512 GPU', 'ANGLE (Qualcomm, Adreno (TM) 512, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 512 GPU', 'Snapdragon 660'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 29.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 660 / 665 早期批次；统一内存共享 LPDDR4-3733 64-bit（29.9 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-510', vendor: 'Qualcomm', name: 'Adreno 510', family: 'Snapdragon 650 / 652 / 653',
+      type: 'mobile-soc', platform: 'phone', year: 2016, api: 'vulkan',
+      apis: ['opengl', 'vulkan'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 510', 'Adreno (TM) 510', 'Qualcomm Adreno 510', 'Adreno 510 GPU', 'ANGLE (Qualcomm, Adreno (TM) 510, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 510 GPU', 'Snapdragon 650', 'Snapdragon 652'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 14.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR3', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 650 / 652 / 653；统一内存共享 LPDDR3-1866 64-bit（14.9 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-509', vendor: 'Qualcomm', name: 'Adreno 509', family: 'Snapdragon 636 / 630',
+      type: 'mobile-soc', platform: 'phone', year: 2017, api: 'vulkan',
+      apis: ['opengl', 'vulkan'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 509', 'Adreno (TM) 509', 'Qualcomm Adreno 509', 'Adreno 509 GPU', 'ANGLE (Qualcomm, Adreno (TM) 509, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 509 GPU', 'Snapdragon 636'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 21.3, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 636 / 630；统一内存共享 LPDDR4-2666 64-bit（21.3 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-506', vendor: 'Qualcomm', name: 'Adreno 506', family: 'Snapdragon 625 / 626 / 450',
+      type: 'mobile-soc', platform: 'phone', year: 2016, api: 'vulkan',
+      apis: ['opengl', 'vulkan'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 506', 'Adreno (TM) 506', 'Qualcomm Adreno 506', 'Adreno 506 GPU', 'ANGLE (Qualcomm, Adreno (TM) 506, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 506 GPU', 'Snapdragon 625'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 14.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 625 / 626 / 450；统一内存共享 LPDDR4-1866 64-bit（14.9 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-505', vendor: 'Qualcomm', name: 'Adreno 505', family: 'Snapdragon 430 / 435 / 439',
+      type: 'mobile-soc', platform: 'phone', year: 2015, api: 'vulkan',
+      apis: ['opengl', 'vulkan'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 505', 'Adreno (TM) 505', 'Qualcomm Adreno 505', 'Adreno 505 GPU', 'ANGLE (Qualcomm, Adreno (TM) 505, OpenGL ES 3.2)', 'Qualcomm(R) Adreno(TM) 505 GPU', 'Snapdragon 430'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 12.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR4', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 430 / 435 / 439（入门 6 系）；统一内存共享 LPDDR4-1600 64-bit（12.8 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-330', vendor: 'Qualcomm', name: 'Adreno 330', family: 'Snapdragon 800 / 801',
+      type: 'mobile-soc', platform: 'phone', year: 2013, api: 'opengl',
+      apis: ['opengl'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 330', 'Adreno (TM) 330', 'Qualcomm Adreno 330', 'Adreno 330 GPU', 'ANGLE (Qualcomm, Adreno (TM) 330, OpenGL ES 3.0)', 'Qualcomm(R) Adreno(TM) 330 GPU', 'Snapdragon 800', 'Snapdragon 801'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 12.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR3', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 800 / 801（Adreno 3 系，OpenGL ES 3.0 时代）；统一内存共享 LPDDR3-1600 64-bit（12.8 GB/s）。不支持 Vulkan/WebGPU。' },
+
+    { id: 'qualcomm-adreno-320', vendor: 'Qualcomm', name: 'Adreno 320', family: 'Snapdragon 600 / S4 Pro',
+      type: 'mobile-soc', platform: 'phone', year: 2013, api: 'opengl',
+      apis: ['opengl'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 320', 'Adreno (TM) 320', 'Qualcomm Adreno 320', 'Adreno 320 GPU', 'ANGLE (Qualcomm, Adreno (TM) 320, OpenGL ES 3.0)', 'Qualcomm(R) Adreno(TM) 320 GPU', 'Snapdragon 600', 'Snapdragon S4 Pro'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 12.8, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR3', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 600 / S4 Pro；统一内存共享 LPDDR3-1600 64-bit（12.8 GB/s）。ALU/频率未公开，FP32 填 null。' },
+
+    { id: 'qualcomm-adreno-308', vendor: 'Qualcomm', name: 'Adreno 308', family: 'Snapdragon 425 / 427 / 429',
+      type: 'mobile-soc', platform: 'phone', year: 2016, api: 'opengl',
+      apis: ['opengl'], os: ['android'], unifiedMemory: true,
+      aliases: ['Adreno 308', 'Adreno (TM) 308', 'Qualcomm Adreno 308', 'Adreno 308 GPU', 'ANGLE (Qualcomm, Adreno (TM) 308, OpenGL ES 3.0)', 'Qualcomm(R) Adreno(TM) 308 GPU', 'Snapdragon 425'],
+      specs: { fp32Tflops: null, fp16Tflops: null, bandwidthGBs: 10.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'LPDDR3', busWidth: 64, shaderUnits: null, gpuCores: null, baseClockMhz: null, boostClockMhz: null },
+      note: '骁龙 425 / 427 / 429（入门 4 系）；统一内存共享 LPDDR3-1333 64-bit（10.6 GB/s）。不支持 Vulkan/WebGPU，FP32 填 null。' },
+  ]
+});

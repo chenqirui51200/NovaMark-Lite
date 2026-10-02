@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NovaMark-Lite 诊断（综合场景计时可信度）</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 14px 12px 40px;
+    background: #0b0e14; color: #e6edf3;
+    font: 15px/1.55 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  h1 { font-size: 19px; margin: 0 0 4px; }
+  .sub { color: #8b98a9; font-size: 13px; margin-bottom: 14px; }
+  #go {
+    width: 100%; padding: 15px; font-size: 17px; font-weight: 700;
+    color: #06121f; background: #4cc2ff; border: 0; border-radius: 10px;
+    margin-bottom: 16px;
+  }
+  #go:disabled { opacity: .5; }
+  .card {
+    background: #121722; border: 1px solid #222c3a; border-radius: 10px;
+    padding: 11px 12px; margin-bottom: 11px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 8px; color: #9fd2ff; }
+  .row { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+  .k { color: #8b98a9; }
+  .v { font-family: ui-monospace, Menlo, Consolas, monospace; text-align: right; word-break: break-all; }
+  .val { font-size: 19px; font-weight: 700; color: #7ee787; }
+  .bad { color: #ff7b72; }
+  .warn { color: #e3b341; }
+  pre {
+    white-space: pre-wrap; word-break: break-all; font-size: 12px;
+    background: #0d1219; border: 1px solid #222c3a; border-radius: 8px;
+    padding: 10px; margin: 0; max-height: 46vh; overflow: auto;
+  }
+  .copy { margin-top: 9px; width: 100%; padding: 12px; font-size: 15px;
+    background: #1f6feb; color: #fff; border: 0; border-radius: 8px; }
+</style>
+</head>
+<body>
+<h1>NovaMark-Lite 诊断</h1>
+<div class="sub">
+  Lite专用：检查三项测试（球体环 / 毒蘑菇 / 综合场景）的计时是否可信。<br>
+  三项各跑一段极短时长，把帧率、GPU 计时扩展状态与 GL 错误都抓出来。把下方文本复制回来即可。
+  本版不含微基准测试，因此不做微基准层面的计时诊断。
+</div>
+
+<button id="go">开始诊断</button>
+<div id="status" style="margin:-6px 0 14px;padding:9px 11px;background:#121722;border:1px solid #222c3a;border-radius:8px;font:13px ui-monospace,monospace;color:#9fd2ff">就绪</div>
+<div id="out"></div>
+
+<script src="../assets/js/core/util.js"></script>
+<script src="../assets/js/data/gpu-db-part-nvidia-amd.js"></script>
+<script src="../assets/js/data/gpu-db-part-intel-apple-qualcomm.js"></script>
+<script src="../assets/js/data/gpu-db-part-mobile.js"></script>
+<script src="../assets/js/data/gpu-db-part-techpowerup.js"></script>
+<script src="../assets/js/data/gpu-db.js"></script>
+<script src="../assets/js/detect/device.js"></script>
+<script src="../assets/js/detect/gpu-match.js"></script>
+<script src="../assets/js/bench/shaders/wgsl.js"></script>
+<script src="../assets/js/bench/shaders/glsl.js"></script>
+<script src="../assets/js/bench/shaders/scene.js"></script>
+<script src="../assets/js/bench/shaders/scene-glsl.js"></script>
+<script src="../assets/js/bench/engine.js"></script>
+<script src="../assets/js/bench/tests/scene-ring.js"></script>
+<script src="../assets/js/bench/tests/vsbm.js"></script>
+<script src="../assets/js/bench/tests/scene.js"></script>
+<script src="../assets/js/score/score.js"></script>
+<script>
+(function () {
+  'use strict';
+  var out = document.getElementById('out');
+  var lines = [];
+  function log(s) { lines.push(s); }
+  function card(title, rows) {
+    var h = '<div class="card"><h2>' + title + '</h2>';
+    rows.forEach(function (r) {
+      var cls = r.bad ? ' v bad' : (r.warn ? ' v warn' : ' v');
+      var big = r.big ? ' val' : cls;
+      h += '<div class="row"><span class="k">' + r.k + '</span><span class="' + big.replace(/^ /, '') + '">' + r.v + '</span></div>';
+    });
+    out.insertAdjacentHTML('beforeend', h + '</div>');
+  }
+  var statusEl = document.getElementById('status');
+  function step(s) { statusEl.textContent = s; lines.push('[步骤] ' + s); }
+  // 让出事件循环，保证状态条真的重绘（同步阻塞时 DOM 不会刷新）
+  function yieldUI() { return new Promise(function (r) { setTimeout(r, 0); }); }
+
+  // 实测 performance.now() 粒度 —— 它决定 1% low / P99 帧时间能精确到什么程度
+  function timerRes() {
+    var best = Infinity;
+    for (var r = 0; r < 24; r++) {
+      var p = performance.now();
+      for (var i = 0; i < 8000; i++) {
+        var n = performance.now();
+        if (n > p) { var d = n - p; if (d > 0 && d < best) best = d; p = n; }
+      }
+    }
+    return isFinite(best) ? best : -1;
+  }
+
+  // 探测渲染目标格式与可读性 —— 场景测试的 HDR / bloom 目标就建在这些格式上
+  function probeTargets() {
+    var c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    var gl = c.getContext('webgl2', { alpha: false, antialias: false, preserveDrawingBuffer: false });
+    if (!gl) return { err: '拿不到 webgl2 上下文' };
+    var res = {};
+    res.maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    res.maxRb = gl.getParameter(gl.MAX_RENDERBUFFER_SIZE);
+    res.maxSamples = gl.getParameter(gl.MAX_SAMPLES);
+    res.cbf = !!gl.getExtension('EXT_color_buffer_float');
+    res.cbhf = !!gl.getExtension('EXT_color_buffer_half_float');
+    var ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+    res.timerExt = !!ext;
+    res.defaultFmt = (function () {
+      var f = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_FORMAT);
+      var t = gl.getParameter(gl.IMPLEMENTATION_COLOR_READ_TYPE);
+      return '0x' + Number(f).toString(16) + '/0x' + Number(t).toString(16);
+    })();
+
+    // 逐个格式试：建 FBO -> 检查完整性 -> readPixels -> 看 GL 错误
+    function tryFmt(label, internal, fmt, type) {
+      var tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, internal, 64, 64, 0, fmt, type, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      var fbo = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      var st = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+      var complete = (st === gl.FRAMEBUFFER_COMPLETE);
+      gl.viewport(0, 0, 64, 64);
+      gl.clearColor(0.25, 0.5, 0.75, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+      var buf = new Uint8Array(4);
+      try { gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buf); } catch (e) { /* noop */ }
+      var e1 = gl.getError();
+      var px = buf[0] + ',' + buf[1] + ',' + buf[2] + ',' + buf[3];
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.deleteFramebuffer(fbo); gl.deleteTexture(tex);
+      return label + '=' + (complete ? '完整' : '不完整(0x' + Number(st).toString(16) + ')') +
+        ' readPx' + (e1 ? '(err0x' + Number(e1).toString(16) + ')' : '') + ' 像素[' + px + ']';
+    }
+    res.targets = [];
+    res.targets.push(tryFmt('RGBA8', gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE));
+    if (res.cbf) {
+      res.targets.push(tryFmt('RGBA16F', gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT));
+      res.targets.push(tryFmt('默认读RGBA8', gl.RGBA16F, gl.RGBA, gl.UNSIGNED_BYTE));
+    }
+    // 阴影贴图用的深度纹理（场景测试必需）
+    var dtex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, dtex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT24, 256, 256, 0, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+    var dfbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, dfbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, dtex, 0);
+    res.shadowOk = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.deleteFramebuffer(dfbo); gl.deleteTexture(dtex);
+    return res;
+  }
+
+  document.getElementById('go').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true; btn.textContent = '诊断中…';
+    out.innerHTML = ''; lines = [];
+
+    step('1/5 测量时钟粒度...');
+    var TR = timerRes();
+    log('NovaMark-Lite 诊断报告（球体环 / 毒蘑菇 / 综合场景）');
+    log('UA: ' + navigator.userAgent);
+    log('secureContext: ' + window.isSecureContext + '   navigator.gpu: ' + !!navigator.gpu);
+    log('performance.now() 实测粒度: ' + TR.toFixed(4) + ' ms');
+    log('devicePixelRatio: ' + window.devicePixelRatio + '  屏幕: ' + screen.width + 'x' + screen.height);
+    log('');
+
+    step('2/5 探测渲染目标（场景测试必需的 HDR / 深度格式）...');
+    var pt = probeTargets();
+    var trows = [];
+    if (pt.err) { trows.push({ k: '错误', v: pt.err, bad: true }); }
+    else {
+      trows.push({ k: '最大纹理 / RBO / 采样', v: pt.maxTex + ' / ' + pt.maxRb + ' / ' + pt.maxSamples });
+      trows.push({ k: 'EXT_color_buffer_float', v: String(pt.cbf), warn: !pt.cbf });
+      trows.push({ k: 'EXT_color_buffer_half_float', v: String(pt.cbhf) });
+      trows.push({ k: 'EXT_disjoint_timer_query', v: String(pt.timerExt), warn: !pt.timerExt });
+      trows.push({ k: '阴影深度帧缓冲（DEPTH_COMPONENT24）', v: pt.shadowOk ? '完整' : '不完整', bad: !pt.shadowOk });
+      trows.push({ k: '默认帧缓冲可读格式', v: pt.defaultFmt });
+      pt.targets.forEach(function (s) { trows.push({ k: s.split('=')[0], v: s.split('=').slice(1).join('=') }); });
+    }
+    card('① 渲染目标探测', trows);
+    log('【渲染目标探测】');
+    trows.forEach(function (r) { log('  ' + r.k + ': ' + r.v); });
+    log('');
+
+    // 跳过 Nova.detect.collect()：某些浏览器（Safari）上它会因为缺少
+    // userAgentData.getHighEntropyValues() 而永远不返回。诊断页只需要一条渲染路径。
+    step('3/5 创建后端上下文（跳过设备识别）...');
+    Promise.resolve({
+      webgpu: { supported: false, adapter: null, adapterInfo: null, features: [], limits: {}, timestamp: false, shaderF16: false },
+      webgl: { supported: true, webgl2: true, unmaskedRenderer: 'diag', unmaskedVendor: '' },
+      profile: { tier: 'unknown', label: '诊断', workloadScale: 1, memoryBudgetMB: 512, isUnified: false },
+      flags: { webgpuAvailable: false, webglAvailable: true }
+    }).then(function (info) {
+      var c = document.createElement('canvas');
+      c.style.cssText = 'width:1px;height:1px;opacity:0;position:fixed;left:-99px';
+      document.body.appendChild(c);
+      return Nova.engine.create(c, { deviceInfo: info, prefer: 'webgl2', resolution: { width: 640, height: 360 } });
+    }).then(function (ctx) {
+      step('4/5 上下文就绪：' + ctx.kind + '，准备依次运行三项场景测试...');
+      var rows = [
+        { k: '后端', v: ctx.kind, big: true },
+        { k: '计时方式', v: ctx.kind === 'webgl2' ? '墙钟 + GPU 同步' : 'GPU 时间戳' },
+        { k: '时钟粒度 ctx.timerResMs', v: (ctx.timerResMs || 0).toFixed(4) + ' ms' },
+        { k: '计时器查询扩展', v: ctx.extensions && ctx.extensions.timerQuery ? '可用' : '不可用' },
+        { k: '时间戳查询', v: (ctx.timestamps && ctx.timestamps.supported) ? '可用' : '不可用' },
+        { k: '同步模式', v: ctx._syncMode || '(运行后才有)' }
+      ];
+      card('② 后端上下文', rows);
+      log('【后端上下文】 后端=' + ctx.kind + '  时钟粒度=' + (ctx.timerResMs || 0).toFixed(4) + 'ms');
+      log('');
+
+      var B = (Nova.score && Nova.score.BASELINE) || {};
+      log('本机基线（当前后端口径）: 球体环 ' + B.ring + ' / 毒蘑菇 ' + B.vsbm + ' / 综合场景 ' + B.scene + ' FPS');
+      log('');
+
+      var H = Nova.engine.Harness;
+      var harness = new H(ctx, { warmupMs: 100, measureMs: 300, rounds: 1, targetBatchMs: 20 });
+      var errorsBefore = ctx.errors.length;
+      var results = [];
+
+      // 极短时长的三项测试：球体环/综合场景约 1 秒，毒蘑菇受 2.5s 下限约束约 7.5 秒
+      var tasks = [
+        { id: 'ring', title: '球体环（原版最简场景）', make: function () {
+            return Nova.makeRingSceneTest(ctx, { preset: 'low', durationMs: 900, warmupMs: 200, tailMs: 100, rounds: 1 });
+          } },
+        { id: 'vsbm', title: '毒蘑菇（Volume Shader BM）', make: function () {
+            return Nova.makeVsbmTest(ctx, { levelScale: 0.05 });
+          } },
+        { id: 'scene', title: '综合场景（四段序列）', make: function () {
+            return Nova.makeSceneTest(ctx, { preset: 'low', durationMs: 8000, segmentScale: 0.25, warmupMs: 300, rounds: 1 });
+          } }
+      ];
+
+      function runOne(t) {
+        var t0 = performance.now();
+        return yieldUI().then(function () {
+          step('4/5 运行 ' + t.id + ' …');
+          return harness.runCustom(t.make(), { report: function () { }, isAborted: function () { return false; } });
+        }).then(function (r) {
+          r.__ms = Math.round(performance.now() - t0);
+          r.__title = t.title;
+          results.push(r);
+          return null;
+        }).catch(function (e) {
+          results.push({ id: t.id, __title: t.title, status: 'failed', error: String(e && e.message || e), meta: {}, __ms: Math.round(performance.now() - t0) });
+          return null;
+        });
+      }
+
+      var chain = Promise.resolve();
+      tasks.forEach(function (t) { chain = chain.then(function () { return runOne(t); }); });
+
+      return chain.then(function () {
+        step('5/5 汇总完成');
+        var apiErrors = ctx.errors.slice(errorsBefore);
+
+        // 每项一张结果卡
+        results.forEach(function (r) {
+          var m = r.meta || {};
+          var bad = r.status !== 'done';
+          var extra = [];
+          if (r.id === 'scene') {
+            extra = [
+              { k: '1% low / 0.1% low', v: (m.fps1Low === undefined ? '—' : Number(m.fps1Low).toFixed(1) + ' / ' + Number(m.fps01Low).toFixed(1) + ' FPS') },
+              { k: '帧时间 P99 / 中位', v: (m.p99FrameMs === undefined ? '—' : Number(m.p99FrameMs).toFixed(2) + ' / ' + Number(m.medianFrameMs).toFixed(2) + ' ms') },
+              { k: '采样深度', v: String(m.pipelineDepth || '?') }
+            ];
+          } else if (r.id === 'vsbm') {
+            extra = [{ k: '档位数', v: String(m.levels || '?') }];
+          } else {
+            extra = [
+              { k: '实例 / pass', v: (m.instances || '?') + ' / ' + (m.passes || '?') },
+              { k: '几何量', v: m.triangles ? (m.triangles / 1000).toFixed(0) + 'k 三角形' : '—' }
+            ];
+          }
+          card('③ ' + r.__title, [
+            { k: '状态', v: r.status + (r.error ? '：' + r.error : ''), big: true, bad: bad },
+            { k: '平均帧率', v: (m.fpsAvg === undefined ? '—' : Number(m.fpsAvg).toFixed(1) + ' FPS'), big: true, bad: bad }
+          ].concat(extra).concat([
+            { k: '测量帧数 / 耗时', v: (m.frames === undefined ? '—' : m.frames) + ' 帧 / ' + r.__ms + ' ms' },
+            { k: '有效样本', v: r.valid ? '是' : '否', warn: !r.valid }
+          ]));
+        });
+
+        log('【三项结果】');
+        results.forEach(function (r) {
+          var m = r.meta || {};
+          log('  ' + r.id + '（' + r.__title + '）');
+          log('    状态 = ' + r.status + (r.error ? '  异常 = ' + r.error : '') +
+            '   有效样本 = ' + (r.valid ? '是' : '否'));
+          log('    平均帧率 = ' + (m.fpsAvg === undefined ? '—' : Number(m.fpsAvg).toFixed(2)) + ' FPS' +
+            '   测量帧数 = ' + (m.frames === undefined ? '—' : m.frames) + '   耗时 = ' + r.__ms + 'ms');
+          if (r.id === 'scene' && m.fps1Low !== undefined) {
+            log('    1% low / 0.1% low = ' + Number(m.fps1Low).toFixed(2) + ' / ' + Number(m.fps01Low).toFixed(2) +
+              ' FPS   P99/中位 = ' + Number(m.p99FrameMs).toFixed(3) + '/' + Number(m.medianFrameMs).toFixed(3) + ' ms');
+          }
+        });
+        log('  API 错误 = ' + (apiErrors.length ? JSON.stringify(apiErrors.slice(0, 4)) : '无'));
+        log('');
+
+        // 逐段成绩（综合场景）
+        var sceneR = results.filter(function (r) { return r.id === 'scene'; })[0];
+        var segs = (sceneR && sceneR.meta && sceneR.meta.segments) || [];
+        if (segs.length) {
+          card('④ 综合场景逐段成绩', segs.map(function (s, i) {
+            return {
+              k: (i + 1) + '. ' + s.name,
+              v: Number(s.fps).toFixed(1) + ' FPS · ' + (Number(s.durationMs) / 1000).toFixed(1) + 's · ' + s.frames + ' 帧',
+              warn: !(s.fps > 0)
+            };
+          }));
+          log('【综合场景逐段成绩】');
+          segs.forEach(function (s, i) {
+            log('  ' + (i + 1) + ') ' + s.name + ' = ' + Number(s.fps).toFixed(2) + ' FPS  时长 ' +
+              (Number(s.durationMs) / 1000).toFixed(2) + 's  帧数 ' + s.frames + '  mode=' + s.mode);
+          });
+          log('');
+        }
+
+        // 评分对照：用真实评分模型算三项几何平均与总分
+        if (Nova.score && Nova.score.dimensions) {
+          var model = Nova.score.dimensions(results.filter(function (r) { return r.status === 'done'; }), { flags: {} });
+          var dim = (model.dimensions || [])[0] || {};
+          log('【评分对照】（三项时长被压缩到极短，仅验证评分链路，不代表真实分数）');
+          (dim.parts || []).forEach(function (p) {
+            log('  ' + p.name + '：' + (p.metric === null ? '—' : Number(p.metric).toFixed(2) + ' ' + p.unit) +
+              '  子项得分 ' + (p.score === null ? '—' : Number(p.score).toFixed(2)) +
+              '  绝对指数 ' + ((Nova.score.absolute(p).index === null) ? '—' : Nova.score.absolute(p).index));
+          });
+          log('  维度分（三项几何平均）= ' + (dim.score === null || dim.score === undefined ? '—' : Number(dim.score).toFixed(3)) +
+            '   总分 = ' + (model.total === null ? '—' : model.total) +
+            '   有效项 ' + model.validParts + '/' + model.totalParts +
+            '   置信度 ' + model.confidence);
+          log('');
+        }
+
+        var ta = document.createElement('textarea');
+        ta.value = lines.join('\n');
+        ta.style.cssText = 'width:100%;height:150px;background:#0d1219;color:#e6edf3;border:1px solid #222c3a;border-radius:8px;padding:9px;font:12px ui-monospace,monospace';
+        out.insertAdjacentHTML('beforeend', '<div class="card"><h2>⑤ 完整文本（复制下面的内容）</h2></div>');
+        out.appendChild(ta);
+        var b = document.createElement('button');
+        b.className = 'copy'; b.textContent = '全选并复制';
+        b.onclick = function () { ta.focus(); ta.select(); try { document.execCommand('copy'); b.textContent = '已复制 ✓'; } catch (e) { b.textContent = '请手动长按选择'; } };
+        out.appendChild(b);
+        document.title = 'DIAG-DONE';
+        window.__DIAG_DONE__ = true;
+        btn.textContent = '重新诊断'; btn.disabled = false;
+      });
+    }).catch(function (e) {
+      card('启动失败', [{ k: '错误', v: String((e && e.message) || e), bad: true }]);
+      log('启动失败: ' + ((e && e.message) || e));
+      window.__DIAG_DONE__ = true;
+      btn.disabled = false; btn.textContent = '重试';
+    });
+  });
+})();
+</script>
+</body>
+</html>
