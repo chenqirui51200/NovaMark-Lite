@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>【演示数据 · 非真实成绩】NovaMark-Lite 报告页交互演示</title>
+<meta name="robots" content="noindex">
+<meta name="description" content="NovaMark-Lite 报告页的交互演示页：用手工合成的假数据渲染完整报告，用于预览图表的悬停 / 触摸读数效果。不是真实测试结果。">
+<meta name="author" content="CR_527">
+<meta name="copyright" content="Copyright © 2026 CR_527. All Rights Reserved.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="assets/css/style.css">
+<script>
+/* 与 index.html 相同的主题初始化：在样式生效前定好，避免闪屏 */
+(function () {
+  try {
+    var saved = localStorage.getItem('novamark:theme');
+    document.documentElement.setAttribute('data-theme', (saved === 'dark' || saved === 'light') ? saved : 'light');
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
+})();
+</script>
+<style>
+  /* 演示页自己的外壳样式（不参与图表绘制）。
+     注意：顶栏是 position: sticky; top: 0，所以这条横幅不能用 sticky，否则会盖住顶栏。 */
+  .demo-banner {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 11px 20px;
+    background: #7c2d12; color: #fff3e0;
+    border-bottom: 2px solid #f59e0b;
+    font-size: 13.5px; line-height: 1.5;
+  }
+  .demo-banner .demo-tag {
+    flex: 0 0 auto; padding: 3px 9px; border-radius: 999px;
+    background: #f59e0b; color: #431407; font-weight: 800; letter-spacing: .5px; font-size: 12px;
+  }
+  .demo-banner b { font-weight: 700; }
+  .demo-banner .demo-sub { color: #fcd9b0; }
+  .demo-note {
+    border: 1px dashed #f59e0b; background: rgba(245, 158, 11, 0.10);
+    border-radius: 10px; padding: 11px 14px; margin-bottom: 16px; font-size: 13px; line-height: 1.6;
+  }
+  .demo-note b { color: #b45309; }
+  .demo-h1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .demo-h1 .demo-chip {
+    padding: 3px 9px; border-radius: 999px; background: #f59e0b; color: #431407;
+    font-weight: 800; font-size: 12px; letter-spacing: .5px;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand" title="NovaMark-Lite 演示页">
+      <div class="brand-logo">N</div>
+      <div>
+        <div class="brand-name">Nova<span>Mark</span></div>
+        <div class="brand-sub">Lite · 报告页交互演示（合成数据）</div>
+      </div>
+    </div>
+    <nav class="nav"><button class="active">评测报告 · 演示</button></nav>
+    <div class="topbar-right">
+      <span class="chip warn"><span class="dot"></span><span>演示数据</span></span>
+      <button class="theme-toggle" id="theme-toggle" title="切换浅色 / 深色主题" aria-label="切换主题">🌙</button>
+    </div>
+  </div>
+</header>
+
+<div class="demo-banner" role="alert">
+  <span class="demo-tag">演示数据</span>
+  <b>本页所有成绩、帧率、稳定性曲线都是手工合成的假数据，不是真实测试结果。</b>
+  <span class="demo-sub">设备名与分数全部为占位值 · 仅用于预览报告页图表的「悬停 / 触摸读数」交互</span>
+</div>
+
+<main class="app">
+  <section class="view" id="view-report"></section>
+
+  <footer class="mt24" style="border-top:1px solid var(--border-soft); padding-top:18px;">
+    <div class="copyright mt16">
+      <div class="row between wrap" style="gap:10px">
+        <div>
+          <b>版权所有 © 2026 CR_527</b>
+          <span class="dim">· NovaMark（含全部源代码、着色器、测试负载、评分模型、界面设计与文档）· All Rights Reserved.</span>
+        </div>
+        <div class="dim">本页为演示页，产权与条款同主项目 · 引用或转载须注明「NovaMark / CR_527」</div>
+      </div>
+    </div>
+  </footer>
+</main>
+
+<!-- 复用主项目同一套脚本：图表库与报告渲染，没有任何重复的绘图代码 -->
+<script src="assets/js/core/util.js"></script>
+<script src="assets/js/detect/device.js"></script>
+<script src="assets/js/report/charts.js"></script>
+<script src="assets/js/score/score.js"></script>
+<script src="assets/js/report/report.js"></script>
+
+<script>
+/* ============================================================================
+ * 演示页引导：合成一份「像真的」的假成绩，然后交给 Nova.report.build() 渲染。
+ * 这里只造数据 + 切主题，所有图表都由 assets/js/report/charts.js 绘制，
+ * 报告版式全部由 assets/js/report/report.js 生成 —— 与真实报告页完全同一套代码。
+ * ==========================================================================*/
+(function () {
+  'use strict';
+
+  var N = window.Nova;
+  var U = N && N.util;
+  var el = U.el, fmt = U.fmt;
+
+  /* ---------------- 1. 合成帧时间序列：几处明显掉帧 + 长尾 ---------------- */
+
+  function makeFrameTimes() {
+    var out = [];
+    var i;
+    var base = 8.6;
+    for (i = 0; i < 320; i++) {
+      /* 固定相位的抖动（不用随机数，保证每次打开形状一致，便于对比截图） */
+      out.push(base + 0.62 * Math.sin(i * 1.7) + 0.48 * Math.sin(i * 0.41 + 1.2));
+    }
+    /* 几处连续掉帧：帧率曲线上能一眼看到坑，悬停能读出是哪一帧、掉到多少。
+     * 每处从峰值线性回落到该帧原本的水平 —— 只降速、不「提速」，
+     * 否则会在坑的尾部造出比基准还快的假帧，直方图也会被带偏。 */
+    var dips = [
+      [38, 6, 24],
+      [118, 3, 41],
+      [196, 8, 17],
+      [268, 4, 62]
+    ];
+    dips.forEach(function (d) {
+      var n = d[1], peak = d[2];
+      for (var k = 0; k < n; k++) {
+        var idx = d[0] + k;
+        if (idx >= out.length) continue;
+        out[idx] = out[idx] + (peak - out[idx]) * (1 - k / n);
+      }
+    });
+    /* 长尾：零星的超长帧，直方图右侧因此拖出一条尾巴 */
+    [57, 143, 254, 311].forEach(function (idx, n) {
+      if (idx < out.length) out[idx] = 46 + n * 15;
+    });
+    return out;
+  }
+
+  /* 从帧时间序列反算报告要用的统计量，保证数字与曲线自洽 */
+  function frameStats(ft) {
+    var fps = ft.map(function (ms) { return 1000 / ms; });
+    var sum = 0, i;
+    for (i = 0; i < fps.length; i++) sum += fps[i];
+    var avg = sum / fps.length;
+    var sortedMs = ft.slice().sort(function (a, b) { return a - b; });
+    function slowestFps(frac) {
+      var n = Math.max(1, Math.round(sortedMs.length * frac));
+      var tail = sortedMs.slice(sortedMs.length - n);
+      var s = 0;
+      for (var k = 0; k < tail.length; k++) s += tail[k];
+      return 1000 / (s / tail.length);
+    }
+    var mean = sortedMs.reduce(function (a, b) { return a + b; }, 0) / sortedMs.length;
+    var varr = 0;
+    for (i = 0; i < ft.length; i++) varr += (ft[i] - mean) * (ft[i] - mean);
+    var sd = Math.sqrt(varr / ft.length);
+    return {
+      fpsAvg: avg,
+      fps1Low: slowestFps(0.01),
+      fps01Low: slowestFps(0.001),
+      p99FrameMs: sortedMs[Math.min(sortedMs.length - 1, Math.floor(sortedMs.length * 0.99))],
+      medianFrameMs: sortedMs[Math.floor(sortedMs.length / 2)],
+      jitter: mean > 0 ? sd / mean : 0,
+      smoothness: Math.max(0, Math.min(100, 100 - (sd / mean) * 420))
+    };
+  }
+
+  /* ---------------- 2. 合成逐轮衰减的稳定性数据 ---------------- */
+
+  function makeStabilityRounds() {
+    var rounds = [];
+    for (var i = 0; i < 24; i++) {
+      /* 逐轮缓慢下滑 + 小幅波动：稳定性图能看到明确趋势 */
+      var v = 150 * (1 - 0.0022 * i) - 0.6 * Math.sin(i * 1.1) - 0.35 * Math.sin(i * 0.37 + 2);
+      rounds.push(Math.round(v * 10) / 10);
+    }
+    return rounds;
+  }
+
+  /* ---------------- 3. 组装一份假成绩 ---------------- */
+
+  function buildDemoData() {
+    var ft = makeFrameTimes();
+    var fs = frameStats(ft);
+
+    var demoRing = {
+      id: 'ring', name: '球体环（演示）', group: 'scene', unit: 'FPS', unitScale: 1,
+      backend: 'webgl2', status: 'done', raw: 268, metric: 268, samples: [], cv: 0.04, valid: true,
+      meta: { frames: 240, fpsAvg: 268, fps1Low: 231, passes: 1, instances: 900, triangles: 288000 }
+    };
+    var demoVsbm = {
+      id: 'vsbm', name: '毒蘑菇低压力测试（演示）', group: 'scene', unit: 'FPS', unitScale: 1,
+      backend: 'webgl2', status: 'done', raw: 142, metric: 142, samples: [], cv: 0.05, valid: true,
+      meta: { frames: 300, fpsAvg: 142, fps1Low: 120, levels: 3, levelScale: 1 }
+    };
+    var demoScene = {
+      id: 'scene', name: '综合场景测试（演示）', group: 'scene', unit: 'FPS', unitScale: 1,
+      backend: 'webgl2', status: 'done', raw: Math.round(fs.fpsAvg * 10) / 10, metric: Math.round(fs.fpsAvg * 10) / 10,
+      samples: [], cv: 0.09, valid: true,
+      meta: {
+        frames: ft.length,
+        fpsAvg: fs.fpsAvg,
+        fps1Low: fs.fps1Low,
+        fps01Low: fs.fps01Low,
+        p99FrameMs: fs.p99FrameMs,
+        medianFrameMs: fs.medianFrameMs,
+        jitter: fs.jitter,
+        smoothness: fs.smoothness,
+        frameTimes: ft,
+        segments: [
+          { id: 'ring', name: '星环（基础单场景）', fps: 236, frames: 64, durationMs: 2600, mode: 'ring' },
+          { id: 'canyon', name: '峡谷·黄昏', fps: 148, frames: 84, durationMs: 3400, mode: 'canyon' },
+          { id: 'cloud', name: '峡谷·云海', fps: 112, frames: 96, durationMs: 3900, mode: 'canyon' },
+          { id: 'city', name: '都市·风暴', fps: 132, frames: 108, durationMs: 4400, mode: 'city' }
+        ],
+        segmentCount: 4, totalDurationMs: 14300, warmupMs: 300, pipelineDepth: 2,
+        renderWidth: 1280, renderHeight: 720, renderPixels: 1280 * 720, preset: 'medium',
+        instances: 1600, triangles: 294912 + 80000 * 1600, terrainTriangles: 294912,
+        rockTriangles: 80000 * 1600, particles: 24000, passes: 9, shadowSize: 2048,
+        durationMs: 14300, normFactor: 1, scoreMetric: 150, scoreBasis: '整条序列平均帧率'
+      }
+    };
+
+    var results = [demoRing, demoVsbm, demoScene];
+    var model = N.score.dimensions(results, { flags: {} });
+    var rounds = makeStabilityRounds();
+    var stability = N.score.stability(rounds);
+    stability.note = '（演示数据）逐轮平均帧率缓慢下滑，用于演示稳定性图的悬停读数。';
+
+    var browser;
+    try { browser = N.detect.detectBrowser(); } catch (e) { browser = null; }
+
+    var data = {
+      id: 'DEMO-0000-0000',
+      hash: 'demo'.repeat(16),
+      timestamp: Date.now(),
+      version: 'NovaMark-Lite ' + N.VERSION + ' · 演示页',
+      demo: true,
+      device: {
+        browser: browser || { name: '演示浏览器', version: '0.0' },
+        os: (browser && browser.os) || { name: '演示系统', version: '0.0' },
+        webgl: { unmaskedRenderer: '（演示数据，非真实渲染器）' },
+        webgpu: {},
+        hardware: { cpuCores: 8, screen: { width: 1920, height: 1080 }, devicePixelRatio: 1 },
+        flags: {}
+      },
+      gpu: {
+        displayName: '演示机型（占位，非真实型号）',
+        match: {
+          gpu: {
+            name: '演示机型（占位，非真实型号）', vendor: '演示厂商', type: 'desktop',
+            specs: { fp32Tflops: 8.0, bandwidthGBs: 256, pixelRateGps: 80, texelRateGts: 160 }
+          },
+          ok: true, confidence: 0.9, method: 'demo'
+        }
+      },
+      results: {
+        results: results,
+        score: model,
+        absolute: N.score.absoluteAll(results),
+        efficiency: [],
+        diagnostics: [{
+          level: 'info', icon: '🧪',
+          title: '这是一份演示数据',
+          detail: '本页由 report-demo.html 用手工合成的假成绩渲染，用于预览报告页图表的悬停 / 触摸读数交互，不是真实测试结果。真实成绩请回到主页运行测试。'
+        }],
+        comparison: {
+          self: { name: '演示机型（占位）', index: 1000, self: true },
+          entries: [
+            { name: '演示机型 A（占位）', index: 1250 },
+            { name: '演示机型（占位）', index: 1000, self: true },
+            { name: '演示机型 B（占位）', index: 860, estimated: true },
+            { name: '演示机型 C（占位）', index: 640, estimated: true }
+          ],
+          dbSize: 0
+        },
+        stability: stability,
+        extra: { backend: '演示' }
+      },
+      config: { backendLabel: '演示后端', presetName: '演示预设', resolution: '1280 × 720', timing: '墙钟' }
+    };
+    return data;
+  }
+
+  /* ---------------- 4. 主题切换（与主项目同一套调色板） ---------------- */
+
+  var CHART_THEMES = {
+    light: {
+      bg: 'transparent', panel: '#ffffff', border: '#d9e2ef', grid: '#e4ebf5',
+      text: '#0f1a2e', muted: '#5f6f8c', dim: '#8b9ab5',
+      cyan: '#0e7490', blue: '#1d4ed8', violet: '#6d28d9', magenta: '#be185d',
+      lime: '#4d7c0f', amber: '#b45309', orange: '#c2410c', red: '#b91c1c',
+      series: ['#0e7490', '#be185d', '#4d7c0f', '#b45309', '#6d28d9', '#1d4ed8', '#c2410c', '#b91c1c']
+    },
+    dark: {
+      bg: 'transparent', panel: '#111a2e', border: '#1e2b45', grid: '#1b2740',
+      text: '#e6edf7', muted: '#8fa3c4', dim: '#5b6b8a',
+      cyan: '#22d3ee', blue: '#3b82f6', violet: '#8b5cf6', magenta: '#f472b6',
+      lime: '#a3e635', amber: '#fbbf24', orange: '#fb923c', red: '#f87171',
+      series: ['#22d3ee', '#f472b6', '#a3e635', '#fbbf24', '#8b5cf6', '#3b82f6', '#fb923c', '#f87171']
+    }
+  };
+
+  function applyTheme(name) {
+    var theme = name === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    try { U.storage.set('theme', theme); } catch (e) { /* noop */ }
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+      btn.title = theme === 'dark' ? '切换到浅色主题' : '切换到深色主题';
+    }
+    if (window.NovaCharts) {
+      var pal = CHART_THEMES[theme];
+      for (var k in pal) {
+        if (Object.prototype.hasOwnProperty.call(pal, k)) NovaCharts.theme[k] = pal[k];
+      }
+      try { NovaCharts.redrawAll(); } catch (e) { /* noop */ }
+    }
+  }
+
+  /* ---------------- 5. 渲染 ---------------- */
+
+  function render() {
+    var host = document.getElementById('view-report');
+    var data = buildDemoData();
+    /* 方便在控制台里检查这份假数据（也是自动化验证的抓手） */
+    window.NovaDemoData = data;
+    window.NovaDemoIsFake = true;
+
+    host.appendChild(el('div', { class: 'demo-note' }, [
+      el('b', { text: '演示页面 · 非真实成绩：' }),
+      document.createTextNode('下面这份报告用手工合成的假数据渲染（帧率曲线里有 ' +
+        '4 处连续掉帧、帧时间直方图带长尾、稳定性逐轮衰减），只为演示图表的读数交互。' +
+        '设备名、型号、分数全部是占位值，导出按钮在演示页里已关闭，避免与真实成绩混淆。')
+    ]));
+
+    host.appendChild(el('div', { class: 'row between wrap mb16', style: { gap: '12px' } }, [
+      el('div', {}, [
+        el('h1', { class: 'demo-h1' }, [
+          document.createTextNode('性能评测报告'),
+          el('span', { class: 'demo-chip', text: '演示数据 · 非真实成绩' })
+        ]),
+        el('div', { class: 'muted small', text: '演示成绩编号 ' + data.id + ' · ' + fmt.date(data.timestamp) +
+          ' · 帧率曲线 / 帧时间直方图 / 稳定性曲线均可悬停（触摸设备按住拖动）查看读数' })
+      ])
+    ]));
+
+    var container = el('div', { id: 'report-body' });
+    host.appendChild(container);
+
+    N.report.build(container, data);
+
+    /* 报告头部的「维度概览」迷你条形图（主项目里由 app.js 填充，这里用同一条 API 补上） */
+    var heroBars = document.getElementById('nova-hero-bars');
+    if (heroBars && model_of(data)) {
+      var cv = el('canvas', { class: 'chart-canvas', style: { height: '96px' } });
+      heroBars.appendChild(cv);
+      NovaCharts.hbar(cv, {
+        rowHeight: 26,
+        gap: 6,
+        items: model_of(data).dimensions.map(function (d, i) {
+          return {
+            label: d.name,
+            value: d.score === null ? 0 : d.score,
+            max: 100,
+            color: NovaCharts.theme.series[i % NovaCharts.theme.series.length],
+            display: d.score === null ? 'N/A' : fmt.num(d.score, 1)
+          };
+        })
+      });
+    }
+  }
+
+  function model_of(data) {
+    return (data && data.results && data.results.score) || null;
+  }
+
+  function boot() {
+    if (!N || !N.report || !N.score || !window.NovaCharts) {
+      document.getElementById('view-report').innerHTML =
+        '<div class="alert bad">核心脚本加载失败，请确认 assets 目录完整。</div>';
+      return;
+    }
+    applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
+    render();
+    var btn = document.getElementById('theme-toggle');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+
+</body>
+</html>

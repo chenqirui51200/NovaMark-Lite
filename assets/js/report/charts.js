@@ -7,6 +7,8 @@
  *   - 零依赖：无外部库 / 字体 / 图片 / 网络请求
  *   - 自适应高 DPI：CSS 尺寸 × devicePixelRatio（上限 3），绘制坐标统一为 CSS 像素
  *   - 窗口缩放（防抖 150ms）自动重绘所有已注册 canvas
+ *   - 悬停读数（鼠标 + 触摸）：底层缓存成离屏 canvas，高亮与 tooltip 走独立一层，
+ *     用 requestAnimationFrame 节流；无悬停时与不启用交互的绘制结果完全一致
  *   - 健壮性：空数组 / 全 0 / NaN / Infinity / 单点 / max<=min 均不抛异常
  *
  * 语法目标：ES2018 以内（可选链等新语法未使用），无顶层 await。
@@ -901,6 +903,11 @@ var NovaCharts = (function () {
     if (!haveData) {
       drawNoData(ctx, plot.x + 4, plot.y + 4, plot.w - 8, plot.h - 8, '暂无数据');
     }
+
+    /* --- 悬停交互：图表本体已经画完，就地缓存成底层，之后只重绘高亮层 --- */
+    if (haveData) {
+      attachHover(canvas, s, o, buildLineHoverSpec(o, series, plot, xs, ys, xMin, xMax, w, h));
+    }
   }
 
   /* ==========================================================================
@@ -1056,6 +1063,12 @@ var NovaCharts = (function () {
         ctx.fillText(fitText(ctx, vtxt, valueW - 4), w - padX, cy);
       }
     }
+
+    /* --- 悬停交互：高亮整行并给出该行读数 --- */
+    attachHover(canvas, s, o, buildHBarHoverSpec(o, items, {
+      y0: y0, rowH: rowH, gap: gap,
+      barX: barX, barW: barW, barH: barH, barRadius: barRadius, gmax: gmax
+    }, w, h));
   }
 
   /* ==========================================================================
@@ -1493,7 +1506,14 @@ var NovaCharts = (function () {
         label: c0.label === undefined || c0.label === null ? '' : String(c0.label),
         value: isFinite(raw) ? raw : 0,
         color: c0.color || theme.series[cats.length % theme.series.length],
-        display: c0.display === undefined || c0.display === null ? '' : String(c0.display)
+        display: c0.display === undefined || c0.display === null ? '' : String(c0.display),
+        /* 下列字段只供悬停读数使用，不影响柱体绘制；
+         * from / to / count / percent 让同一套柱状图可以直接当直方图用。 */
+        sub: c0.sub === undefined || c0.sub === null ? '' : String(c0.sub),
+        from: toNum(c0.from, NaN),
+        to: toNum(c0.to, NaN),
+        count: toNum(c0.count, NaN),
+        percent: toNum(c0.percent, NaN)
       });
     }
     if (cats.length === 0) {
@@ -1610,6 +1630,11 @@ var NovaCharts = (function () {
       ctx.textBaseline = 'top';
       ctx.fillText(fitText(ctx, cat.label, slot - 2), cxc, baseline + 5);
     }
+
+    /* --- 悬停交互：高亮该柱并给出读数 --- */
+    attachHover(canvas, s, o, buildBarsHoverSpec(o, cats, {
+      plot: plot, slot: slot, barW: barW, baseline: baseline, yMax: yMax
+    }, w, h));
   }
 
   /* ==========================================================================
@@ -1669,7 +1694,523 @@ var NovaCharts = (function () {
   }
 
   /* ==========================================================================
-   * 十一、注册表 / 自动重绘
+   * 十一、悬停交互层（零依赖 tooltip / 高亮；鼠标 + 触摸）
+   *
+   * 分两层，避免每次移动都重画整张图：
+   *   底层   —— 图表本体画完的瞬间，整张位图被复制进一张离屏 canvas 缓存；
+   *   高亮层 —— 指针移动时只把缓存贴回来，再叠加高亮与读数气泡。
+   * 因此悬停期间不重画任何一条曲线（一次贴图 + 一次二分查找），并用
+   * requestAnimationFrame 节流：一帧内多次 pointermove 只绘制一次。
+   * 未悬停时画布内容与不启用交互时逐像素一致。
+   *
+   * 触摸：按下显示 → 按住拖动跟随 → 抬起 / 取消消失；气泡显示在触点上方，
+   * 不会被手指压住。图表区域用 touch-action: pan-y（见 style.css），
+   * 上下滑动仍然滚页，只有横向拖动才进入「查看数据」。
+   * ======================================================================== */
+
+  var hoverEntries = [];
+  var hoverRafFn = (typeof window !== 'undefined' && window.requestAnimationFrame)
+    ? function (fn) { return window.requestAnimationFrame(fn); }
+    : function (fn) { return setTimeout(fn, 16); };
+  var hoverCancelFn = (typeof window !== 'undefined' && window.cancelAnimationFrame)
+    ? function (id) { window.cancelAnimationFrame(id); }
+    : function (id) { clearTimeout(id); };
+
+  function findHoverEntry(canvas) {
+    for (var i = 0; i < hoverEntries.length; i++) {
+      if (hoverEntries[i].canvas === canvas) return hoverEntries[i];
+    }
+    return null;
+  }
+
+  function hoverCtxOf(canvas) {
+    try { return (canvas && canvas.getContext) ? canvas.getContext('2d') : null; } catch (e) { return null; }
+  }
+
+  /* 底层：把当前画布整张位图复制进离屏 canvas（每次重绘后刷新一次） */
+  function captureHoverBase(entry) {
+    var canvas = entry.canvas;
+    var bw = canvas.width || 0, bh = canvas.height || 0;
+    if (!(bw > 0) || !(bh > 0)) return;
+    if (!entry.base) {
+      if (typeof document === 'undefined' || !document.createElement) return;
+      entry.base = document.createElement('canvas');
+    }
+    var base = entry.base;
+    if (base.width !== bw) base.width = bw;
+    if (base.height !== bh) base.height = bh;
+    var bctx = hoverCtxOf(base);
+    if (!bctx) return;
+    bctx.setTransform(1, 0, 0, 1, 0, 0);
+    bctx.clearRect(0, 0, bw, bh);
+    try { bctx.drawImage(canvas, 0, 0); } catch (e) { /* 忽略：仅作缓存，失败则退化为空底座 */ }
+  }
+
+  /* 高亮层：把缓存贴回主画布（等于抹掉上一次高亮），并恢复 CSS 像素坐标系 */
+  function restoreHoverBase(entry) {
+    var canvas = entry.canvas;
+    var ctx = hoverCtxOf(canvas);
+    if (!ctx) return null;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width || 0, canvas.height || 0);
+    if (entry.base) {
+      try { ctx.drawImage(entry.base, 0, 0); } catch (e) { /* 忽略 */ }
+    }
+    ctx.setTransform(entry.dpr, 0, 0, entry.dpr, 0, 0);
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'butt';
+    setDash(ctx, false);
+    return ctx;
+  }
+
+  function cancelHoverFrame(entry) {
+    if (!entry.raf) return;
+    hoverCancelFn(entry.raf);
+    entry.raf = 0;
+  }
+
+  function scheduleHoverFrame(entry) {
+    if (entry.raf) return; /* 同一帧内多次移动只绘制一次 */
+    entry.raf = hoverRafFn(function () {
+      entry.raf = 0;
+      flushHover(entry);
+    });
+  }
+
+  function hideHover(entry) {
+    cancelHoverFrame(entry);
+    entry.active = false;
+    entry.pressed = false;
+    entry.dragging = false;
+    entry.readout = null;
+    restoreHoverBase(entry);
+  }
+
+  function flushHover(entry) {
+    if (!entry.enabled || !entry.spec) { hideHover(entry); return; }
+    var ctx = restoreHoverBase(entry);
+    if (!ctx) return;
+    var hit = null;
+    try { hit = entry.spec.hit(entry.px, entry.py); } catch (e) { hit = null; }
+    if (!hit) { entry.readout = null; return; }
+    var readout = null;
+    try { readout = entry.spec.draw(ctx, hit, entry.px, entry.py, entry.touch); } catch (e) { readout = null; }
+    entry.readout = readout || null;
+  }
+
+  /**
+   * 读数气泡：半透明底 + 细边框，颜色取自当前主题（切主题时 theme 被就地改写，
+   * 所以气泡自动跟随明暗主题）。
+   * 鼠标：贴在光标右下方；触摸：显示在触点上方，避免被手指压住。
+   * 贴近右 / 下边缘时自动翻向另一侧，最后再夹取回画布内。
+   * @returns {{title:string, rows:string[]}|null} 实际绘出的读数（便于自动化验证回读）
+   */
+  function drawHoverTooltip(ctx, w, h, ax, ay, title, rows, touch) {
+    var padX = 9, padY = 8, lh = 15, tGap = 3, swatch = 7;
+    var titleTxt = (title === undefined || title === null) ? '' : String(title);
+    var list = [];
+    var i;
+    for (i = 0; i < (rows ? rows.length : 0); i++) {
+      var r0 = rows[i];
+      if (!r0 || r0.text === undefined || r0.text === null || String(r0.text) === '') continue;
+      list.push(r0);
+    }
+    ctx.save();
+    ctx.font = font(11, '600');
+    var maxW = titleTxt ? ctx.measureText(titleTxt).width : 0;
+    ctx.font = font(12, '400');
+    for (i = 0; i < list.length; i++) {
+      var tw = ctx.measureText(String(list[i].text)).width + (list[i].color ? swatch + 6 : 0);
+      if (tw > maxW) maxW = tw;
+    }
+    var bw = clamp(Math.ceil(maxW) + padX * 2, 96, Math.max(96, w - 8));
+    var bh = padY * 2 + (titleTxt ? lh + tGap : 0) + list.length * lh;
+
+    var x, y;
+    if (touch) {
+      x = ax - bw / 2;
+      y = ay - 20 - bh;                 /* 优先在触点上方 */
+      if (y < 4) y = ay + 28;           /* 上方放不下再翻到下方，且离手指远一点 */
+    } else {
+      x = ax + 14;
+      y = ay + 14;
+      if (x + bw > w - 4) x = ax - 14 - bw;
+      if (y + bh > h - 4) y = ay - 14 - bh;
+    }
+    x = clamp(x, 4, Math.max(4, w - bw - 4));
+    y = clamp(y, 4, Math.max(4, h - bh - 4));
+
+    roundRect(ctx, x, y, bw, bh, 6);
+    ctx.fillStyle = toRgba(theme.panel, 0.95);
+    ctx.fill();
+    ctx.strokeStyle = toRgba(theme.border, 0.95);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    var tx = x + padX;
+    var ty = y + padY;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    if (titleTxt) {
+      ctx.font = font(11, '600');
+      ctx.fillStyle = theme.muted;
+      ctx.fillText(fitText(ctx, titleTxt, bw - padX * 2), tx, ty + lh / 2);
+      ty += lh + tGap;
+    }
+    for (i = 0; i < list.length; i++) {
+      var row = list[i];
+      var cx = tx;
+      if (row.color) {
+        roundRect(ctx, cx, ty + lh / 2 - 3, swatch, 6, 2);
+        ctx.fillStyle = row.color;
+        ctx.fill();
+        cx += swatch + 6;
+      }
+      ctx.font = font(12, row.weight || '400');
+      ctx.fillStyle = row.muted ? theme.muted : theme.text;
+      ctx.fillText(fitText(ctx, String(row.text), bw - padX * 2 - (cx - tx)), cx, ty + lh / 2);
+      ty += lh;
+    }
+    ctx.restore();
+    return {
+      title: titleTxt,
+      rows: list.map(function (r) { return String(r.text); })
+    };
+  }
+
+  function bindHover(entry) {
+    var canvas = entry.canvas;
+    if (!canvas.addEventListener) return;
+
+    function isTouch(e) { return !!(e && e.pointerType === 'touch'); }
+
+    /* 指针事件坐标 → 绘制时使用的 CSS 坐标。
+     * 画布位图尺寸 = CSS 尺寸 × devicePixelRatio，而 CSS 尺寸还可能被布局或
+     * CSS transform 再缩放一次；所以缩放比必须现算：
+     *     绘制时的逻辑宽度 ÷ 当前实际渲染宽度
+     * 直接除 devicePixelRatio 在页面缩放 / transform 下会让高亮和数据点错位。 */
+    function locate(e) {
+      var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
+      var rw = (rect && rect.width) ? rect.width : entry.cssW;
+      var rh = (rect && rect.height) ? rect.height : entry.cssH;
+      return {
+        x: (e.clientX - (rect ? rect.left : 0)) * (entry.cssW / (rw || entry.cssW || 1)),
+        y: (e.clientY - (rect ? rect.top : 0)) * (entry.cssH / (rh || entry.cssH || 1))
+      };
+    }
+
+    entry.onMove = function (e) {
+      if (!entry.enabled || !entry.spec) return;
+      if (isTouch(e)) {
+        if (!entry.pressed) return;                 /* 触摸：只有按住才显示 */
+        entry.touch = true;
+        var dx = e.clientX - entry.downX, dy = e.clientY - entry.downY;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) entry.dragging = true;
+        /* 只在判定为「横向拖动查看数据」时阻止默认行为，
+         * 纵向滑动交给 touch-action: pan-y 去滚页，不打断用户浏览。 */
+        if (entry.dragging && Math.abs(dx) >= Math.abs(dy) && e.cancelable && e.preventDefault) {
+          try { e.preventDefault(); } catch (err) { /* 忽略 */ }
+        }
+      } else {
+        entry.touch = false;
+      }
+      var p = locate(e);
+      entry.px = p.x;
+      entry.py = p.y;
+      entry.active = true;
+      scheduleHoverFrame(entry);
+    };
+
+    entry.onDown = function (e) {
+      if (!entry.enabled || !entry.spec) return;
+      entry.touch = isTouch(e);
+      if (entry.touch) {
+        entry.pressed = true;
+        entry.dragging = false;
+        entry.downX = e.clientX;
+        entry.downY = e.clientY;
+      }
+      var p = locate(e);
+      entry.px = p.x;                 /* 按下立刻显示该点读数 */
+      entry.py = p.y;
+      entry.active = true;
+      scheduleHoverFrame(entry);
+    };
+
+    entry.onUp = function (e) {
+      if (!isTouch(e)) return;        /* 鼠标抬起不改变悬停状态 */
+      hideHover(entry);               /* 触摸：松开即消失 */
+    };
+
+    entry.onCancel = function () { hideHover(entry); };
+    entry.onLeave = function () { hideHover(entry); };
+
+    canvas.addEventListener('pointermove', entry.onMove, false);
+    canvas.addEventListener('pointerdown', entry.onDown, false);
+    canvas.addEventListener('pointerup', entry.onUp, false);
+    canvas.addEventListener('pointercancel', entry.onCancel, false);
+    canvas.addEventListener('pointerleave', entry.onLeave, false);
+    entry.bound = true;
+  }
+
+  /**
+   * 给一张「刚刚画完」的 canvas 挂上悬停交互。
+   * @param {HTMLCanvasElement} canvas
+   * @param {Object} s    setupCanvas() 的返回值（CSS 尺寸与 dpr）
+   * @param {Object} o    图表 opts；o.hover === false 可显式关闭
+   * @param {Object} spec { hit(x,y) -> hit|null, draw(ctx, hit, px, py, touch) -> readout|null }
+   */
+  function attachHover(canvas, s, o, spec) {
+    if (!isCanvasLike(canvas) || !canvas.addEventListener || !s || !spec) return;
+    var entry = findHoverEntry(canvas);
+    if (!entry) {
+      entry = {
+        canvas: canvas, spec: null, base: null, cssW: 0, cssH: 0, dpr: 1,
+        raf: 0, px: 0, py: 0, downX: 0, downY: 0, readout: null,
+        active: false, pressed: false, dragging: false, touch: false,
+        enabled: true, bound: false
+      };
+      hoverEntries.push(entry);
+    }
+    entry.spec = spec;
+    entry.cssW = s.w || entry.cssW || 1;
+    entry.cssH = s.h || entry.cssH || 1;
+    entry.dpr = s.dpr || 1;
+    entry.enabled = !(o && o.hover === false);
+    if (!entry.bound) bindHover(entry);
+    captureHoverBase(entry);
+    if (!entry.enabled) hideHover(entry);
+    else if (entry.active) scheduleHoverFrame(entry);  /* 重绘（如换主题）后停在原位置 */
+  }
+
+  function dropHover(canvas) {
+    for (var i = hoverEntries.length - 1; i >= 0; i--) {
+      if (hoverEntries[i].canvas === canvas) {
+        cancelHoverFrame(hoverEntries[i]);
+        hoverEntries.splice(i, 1);
+      }
+    }
+  }
+
+  function pruneHover() {
+    for (var i = hoverEntries.length - 1; i >= 0; i--) {
+      if (hoverEntries[i].canvas && hoverEntries[i].canvas.isConnected === false) {
+        cancelHoverFrame(hoverEntries[i]);
+        hoverEntries.splice(i, 1);
+      }
+    }
+  }
+
+  /* 交互层自省：调试与自动化验证用，返回当前高亮状态与最近一次绘出的读数 */
+  function hoverInfo(canvas) {
+    var entry = findHoverEntry(canvas);
+    if (!entry) return null;
+    return {
+      active: !!entry.active,
+      enabled: !!entry.enabled,
+      touch: !!entry.touch,
+      x: entry.px,
+      y: entry.py,
+      readout: entry.readout || null
+    };
+  }
+
+  /* 在 x 上离 xv 最近的点的下标（点按 x 递增时二分，否则线性兜底） */
+  function nearestPointIndex(points, xv) {
+    var n = points ? points.length : 0;
+    if (n === 0) return -1;
+    if (n === 1) return 0;
+    var i;
+    if (points[0][0] <= points[n - 1][0]) {
+      var lo = 0, hi = n - 1;
+      while (hi - lo > 1) {
+        var mid = (lo + hi) >> 1;
+        if (points[mid][0] <= xv) lo = mid; else hi = mid;
+      }
+      return Math.abs(points[lo][0] - xv) <= Math.abs(points[hi][0] - xv) ? lo : hi;
+    }
+    var best = 0, bd = Infinity;
+    for (i = 0; i < n; i++) {
+      var d = Math.abs(points[i][0] - xv);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return best;
+  }
+
+  /* 折线图：竖直参考线 + 数据点圆点 + 读数（帧序号 / 值） */
+  function buildLineHoverSpec(o, series, plot, xMap, yMap, xMin, xMax, w, h) {
+    var base = series.length ? series[0] : null;
+    if (!base || base.points.length === 0) return null;
+    var hov = (o.hover && typeof o.hover === 'object') ? o.hover : {};
+    return {
+      hit: function (px) {
+        var span = xMax - xMin;
+        if (!(span > 0) || !isFinite(span)) return null;
+        if (px < plot.x - 4 || px > plot.x + plot.w + 4) return null;
+        var cx = clamp(px, plot.x, plot.x + plot.w);
+        var idx = nearestPointIndex(base.points, xMin + ((cx - plot.x) / plot.w) * span);
+        if (idx < 0) return null;
+        var snapped = base.points[idx][0];
+        var marks = [];
+        for (var i = 0; i < series.length; i++) {
+          var k = nearestPointIndex(series[i].points, snapped);
+          if (k < 0) continue;
+          marks.push({
+            label: series[i].label,
+            color: series[i].color,
+            x: series[i].points[k][0],
+            y: series[i].points[k][1],
+            index: k,
+            seriesIndex: i
+          });
+        }
+        if (marks.length === 0) return null;
+        return { x: snapped, index: idx, marks: marks, px: xMap(snapped) };
+      },
+      draw: function (ctx, hit, px, py, touch) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(plot.x, plot.y, plot.w, plot.h);
+        ctx.clip();
+        ctx.strokeStyle = toRgba(theme.text, 0.38);
+        ctx.lineWidth = 1;
+        setDash(ctx, true, [3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(Math.round(hit.px) + 0.5, plot.y);
+        ctx.lineTo(Math.round(hit.px) + 0.5, plot.y + plot.h);
+        ctx.stroke();
+        setDash(ctx, false);
+        for (var i = 0; i < hit.marks.length; i++) {
+          var m = hit.marks[i];
+          var mx = xMap(m.x), my = yMap(m.y);
+          if (!isFinite(mx) || !isFinite(my)) continue;
+          ctx.beginPath();
+          ctx.arc(mx, my, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = m.color;
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(mx, my, 6.5, 0, Math.PI * 2);
+          ctx.strokeStyle = toRgba(m.color, 0.45);
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        var title = hov.title
+          ? hov.title(hit)
+          : (o.xLabel ? o.xLabel + ' ' + trimNum(hit.x, 2) : 'x = ' + trimNum(hit.x, 2));
+        var rows;
+        if (hov.lines) {
+          rows = hov.lines(hit);
+        } else {
+          rows = [];
+          for (var k = 0; k < hit.marks.length; k++) {
+            var mk = hit.marks[k];
+            rows.push({
+              text: (mk.label ? mk.label + ' ' : '') + trimNum(mk.y, 2) + (o.yLabel ? ' ' + o.yLabel : ''),
+              color: mk.color
+            });
+          }
+        }
+        return drawHoverTooltip(ctx, w, h, px, py, title, rows, touch);
+      }
+    };
+  }
+
+  /* 横向条形图：整行高亮 + 读数（名称 / 分值 / 备注） */
+  function buildHBarHoverSpec(o, items, geo, w, h) {
+    var hov = (o.hover && typeof o.hover === 'object') ? o.hover : {};
+    return {
+      hit: function (px, py) {
+        var step = geo.rowH + geo.gap;
+        if (!(step > 0) || items.length === 0) return null;
+        var last = geo.y0 + (items.length - 1) * step + geo.rowH;
+        if (py < geo.y0 - geo.gap / 2 - 2 || py > last + geo.gap / 2 + 2) return null;
+        var idx = clampInt(Math.floor((py - geo.y0) / step), 0, items.length - 1);
+        var cy = geo.y0 + idx * step + geo.rowH / 2;
+        return { index: idx, item: items[idx], cy: cy };
+      },
+      draw: function (ctx, hit, px, py, touch) {
+        var cy = hit.cy;
+        roundRect(ctx, 2, cy - geo.rowH / 2, Math.max(4, w - 4), geo.rowH, 5);
+        ctx.fillStyle = toRgba(theme.text, 0.055);
+        ctx.fill();
+        ctx.strokeStyle = toRgba(hit.item.color, 0.5);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        var m = isNum(hit.item.max) && hit.item.max > 0 ? hit.item.max : geo.gmax;
+        var ratio = m > 0 ? clamp(hit.item.value / m, 0, 1) : 0;
+        var bw = ratio > 0 ? Math.min(geo.barW, Math.max(3, geo.barW * ratio)) : 0;
+        if (bw > 0) {
+          roundRect(ctx, geo.barX, cy - geo.barH / 2, bw, geo.barH, Math.min(geo.barRadius, bw / 2));
+          ctx.strokeStyle = toRgba(hit.item.color, 0.95);
+          ctx.lineWidth = 1.25;
+          ctx.stroke();
+        }
+        var title = hov.title ? hov.title(hit) : hit.item.label;
+        var rows;
+        if (hov.lines) {
+          rows = hov.lines(hit);
+        } else {
+          rows = [{ text: hit.item.display || fmtCompact(hit.item.value), color: hit.item.color, weight: '600' }];
+          if (hit.item.sub) rows.push({ text: hit.item.sub, muted: true });
+        }
+        return drawHoverTooltip(ctx, w, h, px, py, title, rows, touch);
+      }
+    };
+  }
+
+  /* 柱状图（含直方图）：高亮该柱 + 读数。
+   * 类别带 from / to / count / percent 时按直方图口径显示「区间 + 帧数 / 占比」。 */
+  function buildBarsHoverSpec(o, cats, geo, w, h) {
+    var hov = (o.hover && typeof o.hover === 'object') ? o.hover : {};
+    var unit = o.unit ? ' ' + String(o.unit) : '';
+    return {
+      hit: function (px) {
+        if (!(geo.slot > 0) || cats.length === 0) return null;
+        if (px < geo.plot.x - 2 || px > geo.plot.x + geo.plot.w + 2) return null;
+        var idx = clampInt(Math.floor((px - geo.plot.x) / geo.slot), 0, cats.length - 1);
+        return { index: idx, cat: cats[idx] };
+      },
+      draw: function (ctx, hit, px, py, touch) {
+        var cat = hit.cat;
+        var sx = geo.plot.x + geo.slot * hit.index;
+        roundRect(ctx, sx + 1, geo.plot.y, Math.max(2, geo.slot - 2), geo.plot.h, 4);
+        ctx.fillStyle = toRgba(theme.text, 0.05);
+        ctx.fill();
+        var bh = geo.plot.h * clamp(cat.value / geo.yMax, 0, 1);
+        if (bh > 0) {
+          roundRect(ctx, sx + (geo.slot - geo.barW) / 2, geo.plot.y + geo.plot.h - bh, geo.barW, bh, Math.min(4, geo.barW / 2));
+          ctx.strokeStyle = toRgba(cat.color, 0.95);
+          ctx.lineWidth = 1.25;
+          ctx.stroke();
+        }
+        var isBin = isFinite(cat.from) && isFinite(cat.to);
+        var title = hov.title
+          ? hov.title(hit)
+          : (isBin ? trimNum(cat.from, 2) + ' ~ ' + trimNum(cat.to, 2) + unit : cat.label);
+        var rows;
+        if (hov.lines) {
+          rows = hov.lines(hit);
+        } else if (isBin) {
+          rows = [];
+          if (isFinite(cat.count)) rows.push({ text: '帧数 ' + fmtPlain(cat.count), color: cat.color, weight: '600' });
+          if (isFinite(cat.percent)) rows.push({ text: '占比 ' + trimNum(cat.percent, 1) + '%', muted: true });
+          if (cat.sub) rows.push({ text: cat.sub, muted: true });
+          if (rows.length === 0) rows.push({ text: cat.display || fmtCompact(cat.value), color: cat.color });
+        } else {
+          rows = [{ text: cat.display || fmtCompact(cat.value), color: cat.color, weight: '600' }];
+          if (cat.sub) rows.push({ text: cat.sub, muted: true });
+        }
+        return drawHoverTooltip(ctx, w, h, px, py, title, rows, touch);
+      }
+    };
+  }
+
+  /* ==========================================================================
+   * 十二、注册表 / 自动重绘
    * ======================================================================== */
 
   var registry = []; /* [{ canvas, fn, opts }] —— 顺序即重绘顺序 */
@@ -1692,6 +2233,7 @@ var NovaCharts = (function () {
       var e = registry[i];
       if (e.canvas && e.canvas.isConnected === false) registry.splice(i, 1);
     }
+    pruneHover();
     for (var j = 0; j < registry.length; j++) {
       var entry = registry[j];
       try {
@@ -1705,6 +2247,7 @@ var NovaCharts = (function () {
   /* 取消注册并清空画布 */
   function clearCanvas(canvas) {
     if (!canvas) return false;
+    dropHover(canvas);
     var removed = false;
     for (var i = registry.length - 1; i >= 0; i--) {
       if (registry[i].canvas === canvas) {
@@ -1746,7 +2289,7 @@ var NovaCharts = (function () {
   }
 
   /* ==========================================================================
-   * 十二、示例（开发自检）
+   * 十三、示例（开发自检）
    * ======================================================================== */
 
   /* 稳定的伪随机（避免每次刷新形状变化太大） */
@@ -1923,7 +2466,7 @@ var NovaCharts = (function () {
   }
 
   /* ==========================================================================
-   * 十三、公开 API
+   * 十四、公开 API
    * ======================================================================== */
 
   var api = {
@@ -1939,7 +2482,9 @@ var NovaCharts = (function () {
     text: wrap(renderText),
     demo: demo,
     clear: clearCanvas,
-    redrawAll: redrawAll
+    redrawAll: redrawAll,
+    hoverInfo: hoverInfo,
+    hideHover: function (canvas) { dropHover(canvas); }
   };
 
   return api;

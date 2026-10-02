@@ -240,7 +240,7 @@
     container.appendChild(el('div', { class: 'report-hero mb16' }, [hero, heroSide]));
 
     /* ---- 2. 维度得分 ---- */
-    var dimCanvas = el('canvas', { class: 'chart-canvas', style: { height: '230px' } });
+    var dimCanvas = el('canvas', { class: 'chart-canvas', dataset: { chart: 'dim' }, style: { height: '230px' } });
     container.appendChild(el('div', { class: 'mb16' }, [
       card('维度得分（本版只有「综合场景」一个维度，权重 100%；维度分 = 三项的加权几何平均）', [dimCanvas])
     ]));
@@ -265,7 +265,8 @@
     if (scene && scene.status === 'done' && scene.meta && scene.meta.frameTimes) {
       var ft = scene.meta.frameTimes;
       var fpsSeries = ft.map(function (ms, i) { return [i, ms > 0 ? 1000 / ms : 0]; });
-      var sceneCanvas = el('canvas', { class: 'chart-canvas', style: { height: '250px' } });
+      var sceneCanvas = el('canvas', { class: 'chart-canvas', dataset: { chart: 'fps' }, style: { height: '250px' } });
+      var histCanvas = el('canvas', { class: 'chart-canvas', dataset: { chart: 'frame-hist' }, style: { height: '220px' } });
       container.appendChild(card('综合测试 · 四段场景序列成绩', [
         el('div', { class: 'grid c4 mb16', style: { gap: '10px' } }, [
           statTile('平均帧率', fmt.num(scene.meta.fpsAvg, 1) + ' FPS', (scene.meta.renderWidth || '') + '×' + (scene.meta.renderHeight || '')),
@@ -276,6 +277,9 @@
         el('div', { class: 'small muted mb8', text: '逐段成绩（条形长度按本序列内最高帧率归一化；各段权重等于其时长，场景分 = 整条序列的平均帧率）' }),
         segmentTable(scene.meta.segments),
         sceneCanvas,
+        el('div', { class: 'small muted mt16 mb8', text:
+          '帧时间分布直方图（横轴为帧时间区间，柱高 = 落在该区间的帧数；柱子整体越靠右、右侧长尾越长，说明卡顿越多。鼠标悬停或触摸按住某根柱子可读出任一区间的帧数与占比）' }),
+        histCanvas,
         el('div', { class: 'row wrap mt16', style: { gap: '18px' } }, [
           el('span', { class: 'small muted', text: '渲染分辨率 ' + (scene.meta.renderWidth || '?') + '×' + (scene.meta.renderHeight || '?') + '（' + fmt.si(scene.meta.renderPixels, 2) + ' 像素）' }),
           el('span', { class: 'small muted', text: '一帧 ' + (scene.meta.passes || '?') + ' 个 pass' }),
@@ -290,8 +294,34 @@
           xLabel: '帧序号', yLabel: 'FPS', yMin: 0,
           legend: false,
           bands: [{ from: 0, to: (scene.meta.fps1Low || 0), color: 'rgba(248,113,113,0.10)' }],
-          annotations: [{ x: 0, label: '1% Low ' + fmt.num(scene.meta.fps1Low, 1) + ' FPS', color: '#f87171' }]
+          annotations: [{ x: 0, label: '1% Low ' + fmt.num(scene.meta.fps1Low, 1) + ' FPS', color: '#f87171' }],
+          /* 悬停 / 触摸读数：竖直参考线 + 该点圆点，显示帧序号与该点帧率、帧时间 */
+          hover: {
+            title: function (hit) { return '帧序号 ' + fmt.int(hit.x); },
+            lines: function (hit) {
+              var pt = hit.marks[0];
+              var ms = (pt.index >= 0 && pt.index < ft.length) ? ft[pt.index] : (pt.y > 0 ? 1000 / pt.y : 0);
+              return [
+                { text: '帧率 ' + fmt.num(pt.y, 1) + ' FPS', color: NovaCharts.theme.cyan, weight: '600' },
+                { text: '帧时间 ' + fmt.num(ms, 2) + ' ms', muted: true }
+              ];
+            }
+          }
         });
+
+        /* 帧时间分布直方图：同一套 NovaCharts.bars，附带区间元数据供悬停读数使用 */
+        var hist = frameHistogram(ft, { bins: 22 });
+        if (hist) {
+          NovaCharts.bars(histCanvas, {
+            categories: hist.categories,
+            unit: 'ms',
+            yLabel: '帧数',
+            yTicks: 4,
+            showValues: false
+          });
+        } else {
+          NovaCharts.bars(histCanvas, { categories: [] });
+        }
       });
     }
 
@@ -336,7 +366,7 @@
     var stab = stabilityOf(data);
     var stabSeries = stab ? (stab.fpsSeries || (Array.isArray(stab.rounds) ? stab.rounds : null)) : null;
     if (stab && stabSeries && stabSeries.length > 1) {
-      var stCanvas = el('canvas', { class: 'chart-canvas', style: { height: '240px' } });
+      var stCanvas = el('canvas', { class: 'chart-canvas', dataset: { chart: 'stability' }, style: { height: '240px' } });
       var verdictMap = { excellent: ['ok', '优秀'], good: ['info', '良好'], fair: ['warn', '一般'], poor: ['bad', '较差'] };
       var v = verdictMap[stab.verdict] || ['info', '—'];
       container.appendChild(card('稳定性压力测试（独立成项，不计入总分）', [
@@ -362,7 +392,20 @@
           series: [{ label: '每轮平均帧率', color: NovaCharts.theme.lime, points: pts, width: 2, fill: true }],
           xLabel: '轮次', yLabel: 'FPS', yMin: yMin, yMax: yMax, legend: false,
           annotations: [{ x: 0, label: '97% 通过线', color: '#fbbf24' }],
-          bands: [{ from: yMin, to: (stab.fpsHigh || 0) * 0.97, color: 'rgba(248,113,113,0.10)' }]
+          bands: [{ from: yMin, to: (stab.fpsHigh || 0) * 0.97, color: 'rgba(248,113,113,0.10)' }],
+          /* 悬停 / 触摸读数：轮次序号 + 该轮帧率 + 相对首轮的衰减百分比 */
+          hover: {
+            title: function (hit) { return '第 ' + fmt.int(hit.x) + ' 轮'; },
+            lines: function (hit) {
+              var pt = hit.marks[0];
+              var first = stabSeries.length ? stabSeries[0] : pt.y;
+              var diff = first > 0 ? (first - pt.y) / first * 100 : 0;
+              return [
+                { text: '本轮平均帧率 ' + fmt.num(pt.y, 1) + ' FPS', color: NovaCharts.theme.lime, weight: '600' },
+                { text: '相对首轮 ' + fmt.num(first, 1) + ' FPS：' + (diff >= 0 ? '衰减 ' : '提升 ') + fmt.num(Math.abs(diff), 1) + '%', muted: true }
+              ];
+            }
+          }
         });
       });
     }
@@ -449,6 +492,73 @@
       return { stability: s.stability, fpsHigh: s.fpsHigh, fpsLow: s.fpsLow, rounds: s.rounds, passed: s.stability >= 97, decayPct: NaN, verdict: s.stability >= 97 ? 'excellent' : (s.stability >= 90 ? 'good' : (s.stability >= 80 ? 'fair' : 'poor')) };
     }
     return null;
+  }
+
+  /* --------------------------- 帧时间分布直方图 --------------------------- */
+
+  /**
+   * 把帧时间序列分箱成直方图（柱高 = 该区间的帧数），返回 NovaCharts.bars 的 categories。
+   * 只统计有限正数；上界取 P97 适当外扩，避免个别极端长尾把有用的箱子压扁 ——
+   * 超出上界的帧并入最后一箱（区间如实标到真实最大值），长尾因此在图上仍然可见。
+   * @returns {{categories:Array, total:number, bins:number, from:number, to:number}|null}
+   */
+  function frameHistogram(frameTimes, opts) {
+    var o = opts || {};
+    var vals = [];
+    var i;
+    for (i = 0; i < (frameTimes ? frameTimes.length : 0); i++) {
+      var v = Number(frameTimes[i]);
+      if (isFinite(v) && v > 0) vals.push(v);
+    }
+    if (vals.length < 4) return null;
+
+    var sorted = vals.slice().sort(function (a, b) { return a - b; });
+    var lo = sorted[0];
+    var maxVal = sorted[sorted.length - 1];
+    /* 上界取 P97 外扩：极端长尾（偶尔的百毫秒级卡顿）不参与定标，
+     * 否则整张图会被拉成「一根柱 + 一条几乎为零的长尾」。
+     * 超出上界的帧并入最后一箱，该箱区间如实标到真实最大值。 */
+    var p97 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.97))];
+    var hi = Math.max(lo * 1.6, p97 * 1.12);
+    if (!(hi > lo)) hi = lo * 1.2;
+
+    var bins = Math.round(o.bins === undefined ? Math.sqrt(vals.length) * 1.2 : o.bins);
+    if (!isFinite(bins)) bins = 12;
+    bins = Math.max(6, Math.min(30, bins));
+
+    var width = (hi - lo) / bins;
+    if (!(width > 0)) return null;
+
+    var counts = [];
+    for (i = 0; i < bins; i++) counts.push(0);
+    for (i = 0; i < vals.length; i++) {
+      var k = Math.floor((vals[i] - lo) / width);
+      if (k < 0) k = 0;
+      if (k > bins - 1) k = bins - 1;
+      counts[k]++;
+    }
+
+    var total = vals.length;
+    /* 标签过密时只标一部分，小屏上才不会糊成一片（精确值由悬停读数给出） */
+    var every = Math.max(1, Math.ceil(bins / 8));
+    var cats = [];
+    for (i = 0; i < bins; i++) {
+      var from = lo + width * i;
+      var to = from + width;
+      /* 最后一箱吸收溢出：区间如实标到真实最大值，读数不会低估长尾 */
+      if (i === bins - 1 && maxVal > to) to = maxVal;
+      cats.push({
+        label: (i % every === 0) ? fmt.num(from, 1) : '',
+        value: counts[i],
+        display: String(counts[i]),
+        color: NovaCharts.theme.cyan,
+        from: from,
+        to: to,
+        count: counts[i],
+        percent: total > 0 ? (counts[i] / total) * 100 : 0
+      });
+    }
+    return { categories: cats, total: total, bins: bins, from: lo, to: hi, max: maxVal };
   }
 
   function absoluteIndexOf(data, id) {

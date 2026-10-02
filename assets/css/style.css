@@ -450,6 +450,16 @@ table.tbl tr.total td { font-weight: 700; border-top: 1px solid var(--border); c
 
 .chart-canvas { width: 100%; display: block; }
 
+/* 图表悬停 / 触摸读数：
+ *   touch-action: pan-y —— 上下滑动仍然滚页，只有横向拖动才被图表拿去查看数据点；
+ *   同时禁止长按弹出系统菜单与文字选择，避免触摸读数时弹窗打断。 */
+.chart-canvas {
+  touch-action: pan-y;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .diag {
   display: flex; gap: 11px; padding: 12px 14px; border-radius: var(--radius-sm);
   border: 1px solid var(--border-soft); background: var(--row-bg); margin-bottom: 9px;
