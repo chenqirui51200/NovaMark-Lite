@@ -502,3 +502,41 @@ GPU 参考规格库由**主库** `assets/js/data/gpu-db.js` 与**四个分片**�
 ### 为什么暂不处理
 
 统一到单一数据源（或给重复 id 加运行时告警）属于结构性改动，会牵动 `mergeParts` 的合并逻辑。当前已把**主库那一侧的错误值全部修正**，合并后的结果正确，因此**先记录、后处理**。
+
+
+---
+
+## GPU 规格库自检脚本
+
+仓库内自带校验脚本，**Node 直接跑，不依赖浏览器与任何第三方包**：
+
+```bash
+node scripts/gpu-db-check.js
+```
+
+它会加载 `assets/js/data/` 下的全部分片与主库，输出：
+
+- **各文件条数**与 `mergeParts` 的合并统计（新增 / 跳过重复 id / 按名合并）
+- **分类统计**（按厂商、按类型）
+- **11 条推导关系的一致性检查**（R1~R11）：
+  - `fp32 = shaderUnits × 2 × 加速时钟`（**RDNA3/RDNA4 双发射为 ×4**，老 AMD VLIW 每 SIMD 16 SP）
+  - `带宽 = 显存速率 × busWidth / 8`
+  - `填充率 = ROP × 加速时钟`、`纹理率 = TMU × 加速时钟`
+  - `FP16` 是否符合各厂商规则、`base ≤ boost`、`triangleRateGts` 必须为 null 等
+- **可疑项清单**（含期望值与实际值）
+- **跨文件重复 id / 同名规格冲突**
+
+### 用法
+
+```bash
+node scripts/gpu-db-check.js              # 默认检查仓库内 assets/js/data
+node scripts/gpu-db-check.js <目录>       # 指定其它数据目录
+node scripts/gpu-db-check.js --json       # 输出 JSON 报告
+node scripts/gpu-db-check.js --full       # 输出完整清单（不只摘要）
+```
+
+**发现可疑项时以退出码 1 结束**，可直接接入 CI 或提交前钩子。
+
+> 注：运行后会在 `scripts/` 下生成 `gpu-db-check-report.json`（用 `--json` 时），属临时产物，不必提交。
+
+**改数据后请务必跑一次** —— 本库历史上出现过「RDNA3/RDNA4 的 FP32 少算一半」「笔记本卡误用基准频率算填充率」「显存速率单位写成 Gbps 却按 MHz 换算」等错误，这个脚本就是为拦住它们写的。

@@ -232,7 +232,7 @@ window.NOVA_GPU_DB_PARTS.push({
       apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['Intel UHD Graphics', 'Intel(R) UHD Graphics', 'Intel UHD Graphics (Jasper Lake)', 'Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) UHD Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) UHD Graphics (JSL)', 'Jasper Lake', 'JSL'],
       specs: { fp32Tflops: 0.41, fp16Tflops: 0.41, bandwidthGBs: 46.9, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 32, gpuCores: null, baseClockMhz: null, boostClockMhz: 800 },
-      note: 'Gen11 32 EU（256 ALU）；统一内存共享 DDR4-2933 双通道约 46.9 GB/s（LPDDR4X-3733 约 59.7 GB/s）。赛扬 N4500 / 奔腾 N6000 等。' },
+      note: 'Gen11 32 EU（256 ALU）；统一内存共享 DDR4-2933 双通道约 46.9 GB/s（LPDDR4X 机型带宽更高，约 59.7 GB/s）。赛扬 N4500 / 奔腾 N6000 等。' },
 
     { id: 'intel-hd-630', vendor: 'Intel', name: 'Intel HD Graphics 630', family: 'Intel Gen9.5 (Kaby Lake)',
       type: 'integrated', platform: 'desktop', year: 2017, api: 'd3d12',
@@ -267,7 +267,7 @@ window.NOVA_GPU_DB_PARTS.push({
       apis: ['d3d12', 'd3d11', 'vulkan', 'opengl', 'webgpu'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['HD Graphics 520', 'Intel HD Graphics 520', 'Intel(R) HD Graphics 520', 'Intel(R) HD Graphics 520 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 520 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 520 (SKL GT2)', 'SKL GT2'],
       specs: { fp32Tflops: 0.4, fp16Tflops: 0.4, bandwidthGBs: 34.1, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR4', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1050 },
-      note: 'Gen9 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2133 双通道约 34.1 GB/s（LPDDR3-1866 约 29.9 GB/s）。6 代 U 系列。' },
+      note: 'Gen9 GT2，24 EU（192 ALU）；统一内存共享 DDR4-2133 双通道约 34.1 GB/s（另有 LPDDR3 机型，带宽更低）。6 代 U 系列。' },
 
     { id: 'intel-hd-510', vendor: 'Intel', name: 'Intel HD Graphics 510', family: 'Intel Gen9 (Skylake)',
       type: 'integrated', platform: 'desktop', year: 2015, api: 'd3d12',
@@ -281,7 +281,7 @@ window.NOVA_GPU_DB_PARTS.push({
       apis: ['d3d11', 'vulkan', 'opengl'], os: ['windows', 'linux'], unifiedMemory: true,
       aliases: ['HD Graphics 5500', 'Intel HD Graphics 5500', 'Intel(R) HD Graphics 5500', 'Intel(R) HD Graphics 5500 Direct3D11 vs_5_0 ps_5_0', 'ANGLE (Intel, Intel(R) HD Graphics 5500 Direct3D11 vs_5_0 ps_5_0, D3D11)', 'Mesa Intel(R) HD Graphics 5500 (BDW GT2)', 'Broadwell', 'BDW GT2'],
       specs: { fp32Tflops: 0.38, fp16Tflops: 0.38, bandwidthGBs: 25.6, pixelRateGps: null, texelRateGts: null, triangleRateGts: null, vramGB: null, memType: 'DDR3L', busWidth: 128, shaderUnits: 24, gpuCores: null, baseClockMhz: 300, boostClockMhz: 1000 },
-      note: 'Gen8 GT2，24 EU（192 ALU）；统一内存共享 DDR3L-1600 双通道约 25.6 GB/s（LPDDR3-1866 约 29.9 GB/s）。5 代 U 系列最常见核显。' },
+      note: 'Gen8 GT2，24 EU（192 ALU）；统一内存共享 DDR3L-1600 双通道约 25.6 GB/s（另有 LPDDR3 机型，带宽更高）。5 代 U 系列最常见核显。' },
 
     { id: 'intel-hd-4600', vendor: 'Intel', name: 'Intel HD Graphics 4600', family: 'Intel Gen7.5 (Haswell)',
       type: 'integrated', platform: 'desktop', year: 2013, api: 'd3d11',
